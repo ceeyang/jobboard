@@ -69,7 +69,7 @@ jobs:
       - name: Save state to the data branch
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: scripts/push_data_branch.sh
+        run: bash scripts/push_data_branch.sh
 
       - uses: actions/upload-pages-artifact@56afc609e74202658d3ffba0e8f6dda462b719fa   # v3.0.1
         with:
