@@ -15,5 +15,15 @@ PUBLIC_SOURCES = {
 }
 
 
+GOV_SOURCES = {"Germany (BA)", "Sweden (AF)", "EURES (EU)", "Canada Job Bank", "USAJOBS"}   # shown as their own group
+
+
+def kind(chat: str, chat_id: int) -> str:
+    """'gov' = government job service, 'site' = other job site (tiny fake ids -1..-99), else 'telegram'."""
+    if chat in GOV_SOURCES:
+        return "gov"
+    return "site" if -100 < chat_id < 0 else "telegram"
+
+
 def allowed(source_name: str, mode: str | None) -> bool:
     return mode != "public" or source_name in PUBLIC_SOURCES

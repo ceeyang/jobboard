@@ -86,3 +86,13 @@ def test_public_fetch_refuses_to_touch_the_real_database(monkeypatch):
     monkeypatch.setattr(db, "HOME", db.DEFAULT_HOME)
     with pytest.raises(SystemExit):
         cli.main(["fetch", "--mode", "public", "--no-web"])
+
+
+def test_source_kinds_and_new_badge_on_the_public_site(isolated, tmp_path):
+    assert mode.kind("EURES (EU)", -23) == "gov" and mode.kind("RemoteOK", -1) == "site" and mode.kind("某频道", -1001234567890) == "telegram"
+    add(isolated, "Flutter Dev", "Flutter developer", [("EURES (EU)", -23, "https://eures/1")], days_ago=9)
+    isolated.execute("UPDATE jobs SET first_seen=datetime('now')")     # first sighting = just now (fresh public database)
+    publish.export(isolated, tmp_path / "site")
+    j = json.loads((tmp_path / "site/data/jobs.json").read_text())["jobs"][0]
+    assert j["sources"][0]["kind"] == "gov"
+    assert j["first_seen"] == j["posted_at"]            # 9 days old: must not show as "new today"

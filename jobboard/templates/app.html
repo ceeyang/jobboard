@@ -27,14 +27,14 @@ button,input,select{font:inherit;color:inherit}
 button{cursor:pointer}
 :focus-visible{outline:2px solid var(--ac);outline-offset:2px;border-radius:8px}
 @media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important;scroll-behavior:auto!important}}
-:root{--side:clamp(208px,14vw,440px)}
+:root{--side:clamp(232px,14vw,440px)}
 body.side-collapsed{--side:clamp(52px,3.4vw,68px)}
 /* Widths follow the screen: sidebar ≈14vw; list : detail = 5 : 6 of what is left (floors keep small windows usable) */
 .app{display:grid;grid-template-columns:var(--side) minmax(0,1fr) 0;min-height:100vh}
 @media(min-width:1280px){.app{grid-template-columns:var(--side) minmax(480px,5fr) minmax(360px,6fr)}}
 
 /* ---------- sidebar (filters only) ---------- */
-aside{background:var(--panel);border-right:1px solid var(--line);padding:18px 14px 28px;position:sticky;top:0;height:100vh;overflow:auto;scrollbar-width:thin}
+aside{background:var(--panel);border-right:1px solid var(--line);padding:18px 14px 28px;position:sticky;top:0;height:100vh;overflow:auto;overflow-x:hidden;scrollbar-width:thin}
 .brand{display:flex;align-items:center;gap:10px;font-weight:700;font-size:16px;margin:2px 6px 14px}
 .brand .sidetoggle{margin-left:auto;border:1px solid var(--line);background:var(--panel2);border-radius:9px;width:28px;height:28px;color:var(--mut);display:grid;place-items:center;font-size:13px}
 .brand .sidetoggle:hover{color:var(--ac);border-color:var(--ac)}
@@ -42,7 +42,7 @@ aside{background:var(--panel);border-right:1px solid var(--line);padding:18px 14
 .sec{display:flex;justify-content:space-between;align-items:center;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--mut);margin:18px 6px 8px}
 .sec button{border:0;background:none;color:var(--ac);font-size:12px;letter-spacing:0;text-transform:none;padding:0}
 .seg{display:grid;grid-auto-flow:column;grid-auto-columns:1fr;background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:3px;gap:2px}
-.seg button{border:0;background:none;border-radius:7px;padding:5px 8px;font-size:12.5px;color:var(--mut);white-space:nowrap}
+.seg button{border:0;background:none;border-radius:7px;padding:5px 6px;font-size:12.5px;color:var(--mut);white-space:nowrap}
 .seg button.on{background:var(--panel);color:var(--fg);box-shadow:var(--shadow);font-weight:600}
 .chips{display:flex;flex-wrap:wrap;gap:6px}
 .chipbtn{border:1px solid var(--line);background:var(--panel);border-radius:99px;padding:3px 11px;font-size:12.5px;color:var(--mut)}
@@ -216,7 +216,7 @@ pre{white-space:pre-wrap;word-break:break-word;font:inherit;background:var(--pan
   .only-m{display:inline-flex}
   main{padding:0 14px 80px}.stats{grid-template-columns:repeat(2,1fr)}
 }
-@media(max-width:560px){.card{grid-template-columns:38px minmax(0,1fr);}.acts{grid-column:2;justify-content:flex-start}.ring{grid-row:auto}.search kbd{display:none}.btn .lbl{display:none}}
+@media(max-width:560px){.stats,#help{display:none}.card{grid-template-columns:38px minmax(0,1fr);}.acts{grid-column:2;justify-content:flex-start}.ring{grid-row:auto}.search kbd{display:none}.btn .lbl{display:none}}
 </style>
 </head>
 <body>
@@ -236,7 +236,7 @@ pre{white-space:pre-wrap;word-break:break-word;font:inherit;background:var(--pan
   <div class="sec">条件</div>
   <label class="switch">仅远程<input type="checkbox" id="fRemote"></label>
   <label class="switch" title="隐藏标注了「不收个人信息」「博彩」等风险的岗位">隐藏有风险提示<input type="checkbox" id="fRisk"></label>
-  <label class="switch" title="隐藏标明仅限美国/欧洲等地区的岗位">隐藏限地区岗位<input type="checkbox" id="fGeo"></label>
+  <label class="switch" title="隐藏标明「仅限某地区居民」的远程岗位（本地驻场岗位不受影响）">隐藏限地区远程岗位<input type="checkbox" id="fGeo"></label>
   <label class="switch" title="岗位写明雇主可办理签证担保（或官方标明，如加拿大 LMIA）；明确写“不提供担保”的不算">只看雇主担保签证<input type="checkbox" id="fVisa"></label>
 
   <div class="sec">常用搜索</div>
@@ -252,7 +252,7 @@ pre{white-space:pre-wrap;word-break:break-word;font:inherit;background:var(--pan
     <button class="btn ico only-m" id="openSide" aria-label="打开筛选">☰ <span class="lbl">筛选</span></button>
     <div class="search">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
-      <input id="q" placeholder="搜索岗位、公司、频道、联系人…" aria-label="搜索" autocomplete="off">
+      <input id="q" placeholder="搜索岗位、公司、地点…  空格=并且  |=或者  -排除" aria-label="搜索" autocomplete="off">
       <kbd>/</kbd>
     </div>
     <span class="nextrun" id="nextrun"></span>
@@ -318,7 +318,7 @@ async function api(method,url,body){
 }
 const LEVELS=[[1,"宽松"],[5,"推荐"],[10,"严格"]];
 const SORTS=[["score","最匹配"],["new","最新"]];
-const SINCES=[["","不限"],["1d","1 天"],["3d","3 天"],["7d","1 周"],["30d","1 月"]];
+const SINCES=[["","不限"],["1d","1天"],["3d","3天"],["7d","1周"],["30d","1月"]];
 const SINCE_MS={"1d":864e5,"3d":3*864e5,"7d":7*864e5,"30d":30*864e5};
 const PAGE=40,LS="jb2";
 const DEF={sideCollapsed:false,status:"all",min:5,since:"",roles:[],srcs:[],remote:false,hideRisk:false,hideGeo:false,visa:false,q:"",sort:"score",dense:false,theme:"auto",closed:{telegram:true}};
@@ -329,7 +329,8 @@ const save=()=>{try{localStorage.setItem(LS,JSON.stringify(S))}catch(e){}};
 let jobs=[],chats=[],limit=PAGE,sel=null,loaded=false,view=[];
 const has=(a,x)=>a.includes(x),toggle=(a,x)=>has(a,x)?a.filter(y=>y!==x):[...a,x];
 const kindNames=k=>[...new Set([...jobs.flatMap(j=>j.sources.filter(x=>x.kind===k).map(x=>x.chat)),...(k==="telegram"?chats.map(c=>c.title):[])])];
-const KIND_LABEL={site:"🌐 招聘网站",telegram:"✈️ Telegram"};
+const KIND_LABEL={site:"🌐 招聘网站",gov:"🏛 政府就业服务",telegram:"✈️ Telegram"};
+const KIND_ICON={site:"🌐",gov:"🏛",telegram:"✈️"};
 const lab=k=>(ROLES.find(r=>r[0]===k)||[0,k])[1];
 const utc=s=>new Date(String(s).includes("T")||String(s).endsWith("Z")?s:String(s).replace(" ","T")+"Z");
 function ago(d){const m=(Date.now()-d)/6e4;if(m<1)return"刚刚";if(m<60)return Math.floor(m)+" 分钟前";if(m<1440)return Math.floor(m/60)+" 小时前";const dd=Math.floor(m/1440);return dd<31?dd+" 天前":Math.floor(dd/30)+" 个月前"}
@@ -355,7 +356,7 @@ function match(j,s,skip){
   if(skip!=="srcs"&&s.srcs.length&&!j.sources.some(x=>has(s.srcs,x.chat)))return false;
   if(s.remote&&!j.remote)return false;
   if(s.hideRisk&&j.risks.length)return false;
-  if(s.hideGeo&&j.geo==="restricted")return false;
+  if(s.hideGeo&&j.geo==="restricted"&&j.remote)return false;
   if(s.visa&&j.visa!=="yes")return false;
   const q=s.q.trim();
   if(q){const {must,not}=parseQuery(q),h=hay(j);
@@ -380,9 +381,10 @@ function renderSide(){
   $("#savedq").innerHTML=(sq.length?`<div class="chips">${sq.map((x,i)=>`<span class="chipbtn ${S.q===x.q?"on":""}" data-sq="${i}" role="button" tabindex="0" title="${esc(x.q)}">${esc(x.name)}<b class="x" data-sqdel="${i}" aria-label="删除" title="删除">×</b></span>`).join("")}</div>`:'<div class="count" style="padding:0 6px;font-size:12.5px">在搜索框输入关键词，可保存为常用搜索</div>')+
     (cur&&!already?`<div class="saveq"><input id="sqname" placeholder="名称" value="${esc(cur.slice(0,14))}" maxlength="30" aria-label="常用搜索名称"><button data-sqsave>保存</button></div>`:"");
   const base=filtered("srcs"),cnt=n=>base.filter(j=>j.sources.some(x=>x.chat===n)).length;
-  const sites={};jobs.forEach(j=>j.sources.forEach(x=>{if(x.kind==="site")sites[x.chat]=1}));
+  const sites={},govs={};jobs.forEach(j=>j.sources.forEach(x=>{if(x.kind==="site")sites[x.chat]=1;else if(x.kind==="gov")govs[x.chat]=1}));
   const defs=[
-    ["site","🌐 招聘网站",Object.keys(sites).map(n=>({n,url:null}))],
+    ["site",KIND_LABEL.site,Object.keys(sites).map(n=>({n,url:null}))],
+    ["gov",KIND_LABEL.gov,Object.keys(govs).map(n=>({n,url:null}))],
     ["telegram","✈️ Telegram",chats.map(c=>({n:c.title,url:c.url}))]
   ];
   $("#srcs").innerHTML=defs.map(([k,label,items])=>{
@@ -418,7 +420,7 @@ function renderActive(){
   if(S.since)f.push(["since","最近 "+SINCES.find(x=>x[0]===S.since)[1]]);
   S.roles.forEach(r=>f.push(["role:"+r,lab(r)]));
   let rest=S.srcs.slice();
-  for(const k of ["site","telegram"]){            // a fully selected group is one chip, not N
+  for(const k of ["site","gov","telegram"]){            // a fully selected group is one chip, not N
     const names=kindNames(k);
     if(names.length&&names.every(n=>has(S.srcs,n))){f.push(["grp:"+k,KIND_LABEL[k]+"（全部）"]);rest=rest.filter(n=>!names.includes(n))}
   }
@@ -435,7 +437,7 @@ function contacts(c){
   const o=[];
   c.telegram.forEach(h=>o.push(`<a class="cbtn" href="https://t.me/${esc(h.slice(1))}" target="_blank" rel="noopener">✈️ ${esc(h)}</a><button class="cbtn cp" data-copy="${esc(h)}" title="复制" aria-label="复制 ${esc(h)}">⧉</button>`));
   c.email.forEach(e=>o.push(`<a class="cbtn" href="mailto:${esc(e)}">✉️ ${esc(e)}</a><button class="cbtn cp" data-copy="${esc(e)}" title="复制" aria-label="复制 ${esc(e)}">⧉</button>`));
-  c.links.slice(0,2).forEach(l=>{const u=l.startsWith("http")?l:"https://"+l;o.push(`<a class="cbtn" href="${esc(u)}" target="_blank" rel="noopener">🔗 ${esc(u.replace(/^https?:\/\/(www\.)?/,"").slice(0,30))}</a>`)});
+  c.links.slice(0,2).forEach(l=>{const u=l.startsWith("http")?l:"https://"+l;let h=u;try{h=new URL(u).hostname.replace(/^www\./,"")}catch(e){}o.push(`<a class="cbtn" href="${esc(u)}" target="_blank" rel="noopener" title="${esc(u)}">🔗 原帖 · ${esc(h.slice(0,28))} ↗</a>`)});
   return o.length?o.join(""):`<span class="pill">正文无联系方式 · 去频道看按钮或置顶</span>`;
 }
 function srcPills(sources){
@@ -451,7 +453,7 @@ function card(j){
   const p=Math.min(100,j.score*7),ringCls=j.score>=10?"hi":j.score<6?"lo":"";
   const isNew=Date.now()-utc(j.first_seen)<864e5&&j.status==="new";
   const posted=utc(j.posted_at);
-  const geo=j.geo==="worldwide"?`<span class="okg" title="${esc(j.location||"")}">🌍 全球可申请</span>`:j.geo==="restricted"?`<span class="geo" title="${esc(j.location||"")}">🚧 限地区：${esc((j.location||"").slice(0,26))}</span>`:(j.location?`<span>📍 ${esc(j.location.slice(0,26))}</span>`:"");
+  const geo=j.geo==="worldwide"?`<span class="okg" title="${esc(j.location||"")}">🌍 全球可申请</span>`:j.geo==="restricted"&&j.remote?`<span class="geo" title="${esc(j.location||"")}">🚧 限地区：${esc((j.location||"").slice(0,26))}</span>`:(j.location?`<span>📍 ${esc(j.location.slice(0,26))}</span>`:"");
   const visa=j.visa==="yes"?`<span class="okg" title="岗位写明雇主可办理签证担保，或官方标明（如加拿大 LMIA）。申请前请向雇主确认">🛂 担保签证</span>`:j.visa==="maybe"?`<span title="提到搬迁/安家支持，不一定包含签证担保">✈ 含搬迁支持</span>`:"";
   return `<article class="card ${j.status} ${sel===j.id?"sel":""}" data-id="${j.id}">
     <div class="ring ${ringCls}" style="--p:${p}" title="匹配度 ${j.score}"><b>${j.score}</b></div>
@@ -493,7 +495,7 @@ function renderDetail(keepScroll){
       ${j.risks.length?`<div class="warn">⚠️ <span>${j.risks.map(esc).join("；")} — 谨慎核实，不要提交证件或预付费用</span></div>`:""}
       <div><div class="dp-sec">联系方式</div><div class="row" style="margin-top:0">${contacts(j.contacts)}</div></div>
       <div><div class="dp-sec">原始招聘信息 <button data-copytext>复制全文</button></div><div class="orig">${linkify(originalText(j))}</div></div>
-      <div><div class="dp-sec">来源</div>${[...seenSrc.values()].map(s=>`<div class="srcrow"><span class="nm" title="${esc(s.chat)}">${s.kind==="site"?"🌐":"✈️"} ${esc(s.chat)}</span><span class="dt">${esc(utc(s.date).toLocaleDateString())}</span>
+      <div><div class="dp-sec">来源</div>${[...seenSrc.values()].map(s=>`<div class="srcrow"><span class="nm" title="${esc(s.chat)}">${KIND_ICON[s.kind]||"✈️"} ${esc(s.chat)}</span><span class="dt">${esc(utc(s.date).toLocaleDateString())}</span>
         <span>${s.url?`<a class="cbtn" href="${esc(s.url)}" target="_blank" rel="noopener">原帖 ↗</a> `:""}${s.channel_url?`<a class="cbtn" href="${esc(s.channel_url)}" target="_blank" rel="noopener">频道 ↗</a>`:""}</span></div>`).join("")}</div>
     </div>
     <div class="dp-foot">${primary?`<a class="btn p" href="${esc(primary)}" target="_blank" rel="noopener">打开原帖 / 申请 ↗</a>`:""}
@@ -506,7 +508,7 @@ function renderList(){
   $("#count").textContent=`${view.length} 条`;
   if(!view.length){
     const hint=S.min>1?"试试把匹配度调到「宽松」":"试试清除部分筛选条件";
-    $("#list").innerHTML=`<div class="empty"><b>没有符合条件的岗位</b>${hint}，或点右上角「刷新」拉取最新数据。</div>`;return}
+    $("#list").innerHTML=`<div class="empty"><b>没有符合条件的岗位</b>${hint}${window.JB_STATIC?"":"，或点右上角「刷新」拉取最新数据"}。<div style="margin-top:14px"><button class="btn" data-clearall>清除全部筛选</button></div></div>`;return}
   $("#list").innerHTML=view.slice(0,limit).map(card).join("")+(view.length>limit?`<button class="btn more" data-more>显示更多（还有 ${view.length-limit} 条）</button>`:"");
 }
 const PRESETS=[[0,"关闭"],[15,"每 15 分钟"],[30,"每 30 分钟"],[60,"每 1 小时"],[120,"每 2 小时"],[360,"每 6 小时"],[720,"每 12 小时"],[1440,"每 24 小时"]];

@@ -20,6 +20,25 @@
       return `GitHub Actions 每小时更新 · ${h < 1 ? "刚刚更新" : h + " 小时前更新"}`;
     },
   };
+  // Read-only edition: no manual refresh / settings (data is rebuilt hourly), and a short, dismissible explanation.
+  const style = document.createElement("style");
+  style.textContent = "#refresh,#settingsBtn{display:none!important}" +
+    ".intro{display:flex;gap:12px;align-items:flex-start;margin:4px 0 14px;padding:12px 14px;border:1px solid var(--line);" +
+    "background:var(--panel);border-radius:var(--r);font-size:13px;line-height:1.55;color:var(--mut)}" +
+    ".intro b{color:var(--fg)}.intro button{margin-left:auto;flex:none;border:1px solid var(--line);background:transparent;" +
+    "color:var(--fg);border-radius:8px;padding:4px 10px;cursor:pointer;font-size:12.5px}";
+  document.head.appendChild(style);
+  document.addEventListener("DOMContentLoaded", () => {
+    if (read("jb-pub-intro", false)) return;
+    const box = document.createElement("div");
+    box.className = "intro";
+    box.innerHTML = "<div><b>公开版岗位看板</b>：每小时自动汇总远程招聘站、企业招聘页，以及瑞典、欧盟 EURES 的政府就业服务。" +
+      "这里只显示摘要和<b>原帖链接</b>，申请请点开原帖。想找<b>雇主担保签证</b>的岗位，打开左侧「只看雇主担保签证」" +
+      "（根据岗位正文判断，申请前请向雇主确认）。感兴趣/已投等标记只保存在你当前的浏览器里。</div><button>知道了</button>";
+    box.querySelector("button").onclick = () => { write("jb-pub-intro", true); box.remove(); };
+    const anchor = document.querySelector("#stats");
+    anchor?.parentNode.insertBefore(box, anchor);
+  });
   const settings = () => ({ refresh_minutes: 60, digest_enabled: false, digest_time: "09:00", saved_searches: read(KQ, []),
                             next_fetch_at: null, min_refresh: 5, readonly: true });
 

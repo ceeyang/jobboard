@@ -8,7 +8,7 @@ import shutil
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
-from jobboard import mode, roles
+from jobboard import db, mode, roles
 
 WINDOW_DAYS, EXCERPT = 45, 600
 ROOT = Path(__file__).parent
@@ -25,6 +25,15 @@ def redact(s: str | None) -> str:
 def excerpt(text: str | None) -> str:
     t = redact(text).strip()
     return t if len(t) <= EXCERPT else t[:EXCERPT].rsplit(" ", 1)[0].rstrip() + "…"
+
+
+def _first_seen(r) -> str:
+    """The board's "NEW" badge means first seen < 24 h ago. On a freshly built public site that would be everything,
+    so use the posting's own date when it is older than our first sighting."""
+    seen = (r["first_seen"] or "").replace(" ", "T")
+    seen = seen + "+00:00" if seen and "+" not in seen and not seen.endswith("Z") else seen   # sqlite CURRENT_TIMESTAMP is UTC
+    a, b = db._ts(r["posted_at"]), db._ts(seen)
+    return r["posted_at"] if a is not None and (b is None or a < b) else r["first_seen"]
 
 
 def numeric_id(fingerprint: str) -> int:
@@ -64,10 +73,10 @@ def job_to_public(r) -> dict | None:
     return {"id": numeric_id(r["fingerprint"]), "title": redact(r["title"]), "company": redact(r["company"]),
             "location": r["location"], "geo": r["geo"] or "unknown", "salary": r["salary"], "remote": bool(r["remote"]),
             "score": r["score"], "tags": json.loads(r["tags"]), "risks": json.loads(r["risks"]), "visa": r["visa"] or "",
-            "posted_at": r["posted_at"], "first_seen": r["first_seen"], "status": "new", "text": excerpt(r["text"]),
+            "posted_at": r["posted_at"], "first_seen": _first_seen(r), "status": "new", "text": excerpt(r["text"]),
             "contacts": {"telegram": [], "email": [], "links": _public_links(sources)},
             "sources": [{"chat": s["chat"], "chat_id": s["chat_id"], "msg_id": s["msg_id"], "date": s["date"], "url": s["url"],
-                         "channel_url": None, "kind": "site"} for s in sources]}
+                         "channel_url": None, "kind": mode.kind(s["chat"], s["chat_id"])} for s in sources]}
 
 
 def export(con, out: str | Path, now: datetime | None = None, window_days: int = WINDOW_DAYS) -> dict:

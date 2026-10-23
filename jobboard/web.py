@@ -10,7 +10,7 @@ from pathlib import Path
 from fastapi import Body, FastAPI, HTTPException
 from fastapi.responses import HTMLResponse
 
-from jobboard import db, links, roles, scheduler
+from jobboard import db, links, mode, roles, scheduler
 
 
 @asynccontextmanager
@@ -35,7 +35,7 @@ def _decode(r, usernames: dict | None = None) -> dict:
         u = (usernames or {}).get(s["chat_id"])
         s["url"] = s.get("url") or links.post_url(s["chat_id"], u, s["msg_id"])  # job sites carry their own URL
         s["channel_url"] = links.channel_url(s["chat_id"], u)
-        s["kind"] = "site" if -100 < s["chat_id"] < 0 else "telegram"  # job sites use tiny fake ids (-1..-7)
+        s["kind"] = mode.kind(s["chat"], s["chat_id"])  # job sites use tiny fake ids; government services are their own group
     return d
 
 
