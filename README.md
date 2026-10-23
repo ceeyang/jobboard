@@ -1,6 +1,6 @@
 # jobboard
 
-**Public site: https://ceeyang.github.io/jobboard/** - rebuilt every hour by GitHub Actions (see "Public site" below).
+**Public site: https://ceeyang.com/jobboard/** (same as ceeyang.github.io/jobboard/, which redirects there) - rebuilt every hour by GitHub Actions (see "Public site" below).
 The local edition (this README) additionally reads your private Telegram groups, LinkedIn and key-based APIs.
 
 Reads your Telegram job groups/channels (via `cli-anything-telegram`'s Telethon session), finds postings that

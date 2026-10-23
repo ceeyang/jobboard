@@ -1,0 +1,23 @@
+name: keepalive
+
+# GitHub disables scheduled workflows after 60 days without repository activity. Whether commits made with the
+# built-in token count is not documented, so this adds a small monthly commit. Check the Actions page now and then:
+# if "update" shows as disabled, enable it again there.
+on:
+  schedule:
+    - cron: "23 4 1 * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  touch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262          # v4.4.0
+      - run: |
+          git config user.name "jobboard-bot"
+          git config user.email "jobboard-bot@users.noreply.github.com"
+          git commit --allow-empty -m "keepalive $(date -u +%F)"
+          git push
