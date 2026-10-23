@@ -1,0 +1,713 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>岗位看板</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 32 32%27%3E%3Crect width=%2732%27 height=%2732%27 rx=%278%27 fill=%27%235b5bf0%27/%3E%3Ctext x=%2716%27 y=%2722%27 font-size=%2718%27 text-anchor=%27middle%27 fill=%27white%27%3E%E2%9C%A6%3C/text%3E%3C/svg%3E">
+<style>
+:root{
+  --bg:#f4f5fb;--panel:#fff;--panel2:#f6f7fc;--fg:#14172b;--mut:#6b7190;--line:#e6e8f2;
+  --ac:#5b5bf0;--ac2:#8b5cf6;--acsoft:#ececff;--ok:#12a36b;--warn:#c2410c;--warnbg:#fff4e6;
+  --shadow:0 1px 2px rgba(20,23,43,.04),0 8px 24px -14px rgba(20,23,43,.14);--r:14px;
+  --t-flutter:#0ea5e9;--t-ios:#475569;--t-android:#16a34a;--t-mobile:#0d9488;--t-frontend:#ea580c;--t-fullstack:#9333ea;
+}
+@media(prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#0b0d17;--panel:#131627;--panel2:#181c31;--fg:#e9ebf7;--mut:#8f95b5;--line:#232846;
+  --ac:#8b8bff;--ac2:#a78bfa;--acsoft:#1d2040;--ok:#34d399;--warn:#fbbf24;--warnbg:#2b2210;
+  --shadow:0 1px 2px rgba(0,0,0,.3),0 8px 24px -14px rgba(0,0,0,.6);}}
+:root[data-theme="dark"]{
+  --bg:#0b0d17;--panel:#131627;--panel2:#181c31;--fg:#e9ebf7;--mut:#8f95b5;--line:#232846;
+  --ac:#8b8bff;--ac2:#a78bfa;--acsoft:#1d2040;--ok:#34d399;--warn:#fbbf24;--warnbg:#2b2210;
+  --shadow:0 1px 2px rgba(0,0,0,.3),0 8px 24px -14px rgba(0,0,0,.6);}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;background:var(--bg);color:var(--fg);font:14px/1.55 -apple-system,BlinkMacSystemFont,"SF Pro Text","PingFang SC","Segoe UI",sans-serif;-webkit-font-smoothing:antialiased}
+button,input,select{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:2px solid var(--ac);outline-offset:2px;border-radius:8px}
+@media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important;scroll-behavior:auto!important}}
+:root{--side:clamp(208px,14vw,440px)}
+body.side-collapsed{--side:clamp(52px,3.4vw,68px)}
+/* Widths follow the screen: sidebar ≈14vw; list : detail = 5 : 6 of what is left (floors keep small windows usable) */
+.app{display:grid;grid-template-columns:var(--side) minmax(0,1fr) 0;min-height:100vh}
+@media(min-width:1280px){.app{grid-template-columns:var(--side) minmax(480px,5fr) minmax(360px,6fr)}}
+
+/* ---------- sidebar (filters only) ---------- */
+aside{background:var(--panel);border-right:1px solid var(--line);padding:18px 14px 28px;position:sticky;top:0;height:100vh;overflow:auto;scrollbar-width:thin}
+.brand{display:flex;align-items:center;gap:10px;font-weight:700;font-size:16px;margin:2px 6px 14px}
+.brand .sidetoggle{margin-left:auto;border:1px solid var(--line);background:var(--panel2);border-radius:9px;width:28px;height:28px;color:var(--mut);display:grid;place-items:center;font-size:13px}
+.brand .sidetoggle:hover{color:var(--ac);border-color:var(--ac)}
+.logo{width:32px;height:32px;border-radius:10px;background:linear-gradient(135deg,var(--ac),var(--ac2));display:grid;place-items:center;color:#fff;box-shadow:0 6px 16px -6px var(--ac)}
+.sec{display:flex;justify-content:space-between;align-items:center;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--mut);margin:18px 6px 8px}
+.sec button{border:0;background:none;color:var(--ac);font-size:12px;letter-spacing:0;text-transform:none;padding:0}
+.seg{display:grid;grid-auto-flow:column;grid-auto-columns:1fr;background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:3px;gap:2px}
+.seg button{border:0;background:none;border-radius:7px;padding:5px 8px;font-size:12.5px;color:var(--mut);white-space:nowrap}
+.seg button.on{background:var(--panel);color:var(--fg);box-shadow:var(--shadow);font-weight:600}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chipbtn{border:1px solid var(--line);background:var(--panel);border-radius:99px;padding:3px 11px;font-size:12.5px;color:var(--mut)}
+.chipbtn:hover{border-color:var(--ac);color:var(--ac)}
+.chipbtn.on{border-color:transparent;color:#fff;background:var(--ac)}
+.switch{display:flex;align-items:center;justify-content:space-between;padding:6px 8px;color:var(--fg);cursor:pointer;border-radius:10px;font-size:13.5px}
+.switch:hover{background:var(--panel2)}
+.switch input{appearance:none;width:32px;height:19px;background:var(--line);border-radius:99px;position:relative;transition:.2s;cursor:pointer;margin:0;flex:none}
+.switch input::after{content:"";position:absolute;top:2px;left:2px;width:15px;height:15px;border-radius:50%;background:#fff;transition:.2s;box-shadow:0 1px 3px rgba(0,0,0,.3)}
+.switch input:checked{background:var(--ac)}.switch input:checked::after{left:15px}
+.grp{margin-bottom:6px}
+.ghead{display:flex;align-items:center;gap:4px}
+.ghead .gsel{flex:1;display:flex;justify-content:space-between;align-items:center;border:0;background:none;padding:6px 8px;border-radius:8px;font-weight:600;font-size:13px;text-align:left}
+.ghead .gsel:hover{background:var(--panel2)}.ghead .gsel.on{color:var(--ac)}
+.ghead .gsel span{font-weight:500;font-size:12px;color:var(--mut);background:var(--panel2);border-radius:99px;padding:0 8px}
+.ghead .chev{border:0;background:none;color:var(--mut);padding:4px 6px;border-radius:6px;transition:transform .15s}
+.grp.closed .chev{transform:rotate(-90deg)}.grp.closed .rows{display:none}
+.rows{display:grid;gap:1px;margin:2px 0 4px}
+.srow{display:grid;grid-template-columns:16px 1fr auto auto;align-items:center;gap:8px;padding:5px 8px;border-radius:8px;cursor:pointer;color:var(--fg);font-size:13px;user-select:none}
+.srow:hover{background:var(--panel2)}
+.srow .chk{width:15px;height:15px;border:1.5px solid var(--line);border-radius:5px;display:grid;place-items:center;font-size:10px;color:#fff}
+.srow.on .chk{background:var(--ac);border-color:var(--ac)}.srow.on .chk::after{content:"✓"}
+.srow b{font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.srow i{font-style:normal;color:var(--mut);font-size:12px;min-width:18px;text-align:right}
+.srow.zero{opacity:.5}
+.srow .ext{color:var(--mut);text-decoration:none;padding:0 4px;border-radius:6px}.srow .ext:hover{color:var(--ac);background:var(--acsoft)}
+
+/* ---------- main ---------- */
+main{min-width:0;padding:0 clamp(14px,1.5vw,32px) 80px}
+.bar{position:sticky;top:0;z-index:5;background:color-mix(in srgb,var(--bg) 88%,transparent);backdrop-filter:blur(12px);padding:16px 0 12px;display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.search{flex:1;min-width:180px;position:relative}
+.search input{width:100%;padding:10px 38px 10px 38px;border:1px solid var(--line);background:var(--panel);border-radius:12px;outline:none;box-shadow:var(--shadow)}
+.search input:focus{border-color:var(--ac);box-shadow:0 0 0 3px var(--acsoft)}
+.search svg{position:absolute;left:12px;top:11px;width:16px;height:16px;color:var(--mut)}
+.search kbd{position:absolute;right:10px;top:8px}
+kbd{font:11px ui-monospace,SFMono-Regular,Menlo,monospace;border:1px solid var(--line);border-bottom-width:2px;border-radius:6px;padding:0 6px;color:var(--mut);background:var(--panel2)}
+.btn{border:1px solid var(--line);background:var(--panel);border-radius:12px;padding:9px 14px;font-weight:600;display:inline-flex;gap:8px;align-items:center;box-shadow:var(--shadow);white-space:nowrap}
+.btn:hover{border-color:var(--ac)}
+.btn.p{background:linear-gradient(135deg,var(--ac),var(--ac2));border-color:transparent;color:#fff}
+.btn.ico{padding:9px 11px;font-weight:500}
+.btn:disabled{opacity:.7;cursor:progress}
+.spin{width:13px;height:13px;border:2px solid currentColor;border-right-color:transparent;border-radius:50%;animation:r .7s linear infinite;display:none}
+.busy .spin{display:inline-block}@keyframes r{to{transform:rotate(360deg)}}
+.only-m{display:none}
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin:4px 0 16px}
+.stat{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:11px 14px;box-shadow:var(--shadow);display:flex;align-items:baseline;justify-content:space-between;gap:8px;position:relative;overflow:hidden}
+.stat .k{color:var(--mut);font-size:12.5px}.stat .v{font-size:22px;font-weight:700;letter-spacing:-.02em}
+.stat::before{content:"";position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--c,var(--ac))}
+.tabs{display:flex;gap:4px;border-bottom:1px solid var(--line);margin-bottom:10px;overflow-x:auto;scrollbar-width:none}
+.tabs::-webkit-scrollbar{display:none}
+.tab{border:0;background:none;padding:9px 12px;color:var(--mut);white-space:nowrap;border-bottom:2px solid transparent;margin-bottom:-1px;display:flex;gap:6px;align-items:center}
+.tab:hover{color:var(--fg)}.tab.on{color:var(--ac);border-color:var(--ac);font-weight:600}
+.tab .n{font-size:11.5px;background:var(--panel2);border-radius:99px;padding:0 7px;color:var(--mut)}.tab.on .n{background:var(--acsoft);color:var(--ac)}
+.tools{display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap;margin-bottom:12px}
+.active{display:flex;gap:6px;flex-wrap:wrap;align-items:center;min-height:28px}
+.af{border:1px solid var(--line);background:var(--panel);border-radius:99px;padding:2px 6px 2px 11px;font-size:12.5px;display:inline-flex;gap:5px;align-items:center}
+.af:hover{border-color:var(--ac)}.af span{color:var(--mut)}
+.clear{border:0;background:none;color:var(--ac);font-size:12.5px;padding:2px 6px}
+.count{color:var(--mut);font-size:13px}
+.right{display:flex;gap:8px;align-items:center}
+.right .seg{grid-auto-columns:auto}
+
+/* ---------- detail panel (right) ---------- */
+.detail-panel{background:var(--panel);border-left:1px solid var(--line);position:sticky;top:0;height:100vh;overflow:auto;display:flex;flex-direction:column;scrollbar-width:thin}
+.dp-empty{margin:auto;text-align:center;color:var(--mut);padding:30px;max-width:300px}
+.dp-empty .big{font-size:34px;margin-bottom:6px}.dp-empty b{display:block;color:var(--fg);margin-bottom:6px}
+.dp-top{position:sticky;top:0;z-index:2;background:var(--panel);border-bottom:1px solid var(--line);padding:10px 14px;display:flex;gap:8px;align-items:center}
+.dp-top .sp{flex:1}.dp-top .ibtn{width:32px;height:32px}
+.dp-body{padding:16px 18px 20px;display:grid;gap:14px;align-content:start}
+.dp-body h2{margin:0;font-size:19px;line-height:1.35;letter-spacing:-.01em;overflow-wrap:anywhere}
+.facts{display:grid;grid-template-columns:auto 1fr;gap:6px 14px;font-size:13px;margin:0}
+.facts dt{color:var(--mut)}.facts dd{margin:0;overflow-wrap:anywhere}
+.dp-sec{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--mut);display:flex;justify-content:space-between;align-items:center;margin-bottom:6px}
+.dp-sec button{border:0;background:none;color:var(--ac);font-size:12px;letter-spacing:0;text-transform:none;padding:0}
+.orig{background:var(--panel2);border:1px solid var(--line);border-radius:12px;padding:14px 16px;white-space:pre-wrap;word-break:break-word;font-size:14px;line-height:1.7;max-height:none}
+.orig a{color:var(--ac);text-decoration:underline;text-underline-offset:2px}
+.srcrow{display:flex;gap:8px;align-items:center;justify-content:space-between;flex-wrap:wrap;padding:8px 10px;border:1px solid var(--line);border-radius:10px;background:var(--panel2);font-size:13px}
+.srcrow + .srcrow{margin-top:6px}
+.srcrow .nm{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:600}.srcrow .dt{color:var(--mut);font-size:12px}
+.dp-foot{position:sticky;bottom:0;background:var(--panel);border-top:1px solid var(--line);padding:10px 14px;display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.dp-foot .seg{flex:1;min-width:240px;grid-auto-columns:1fr}
+.dscrim{display:none}
+.card{cursor:pointer}
+
+/* ---------- cards ---------- */
+.list{display:grid;gap:10px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:14px 16px;box-shadow:var(--shadow);display:grid;grid-template-columns:42px minmax(0,1fr) auto;gap:4px 14px;position:relative;transition:border-color .15s,box-shadow .15s}
+.card:hover{border-color:color-mix(in srgb,var(--ac) 35%,var(--line))}
+.card.sel{border-color:var(--ac);box-shadow:0 0 0 3px var(--acsoft),var(--shadow)}
+.card.ignored{opacity:.55}
+.card.applied::before,.card.replied::before,.card.interested::before{content:"";position:absolute;left:0;top:14px;bottom:14px;width:3px;border-radius:0 3px 3px 0;background:var(--st)}
+.card.interested{--st:#f59e0b}.card.applied{--st:var(--ok)}.card.replied{--st:var(--ac)}
+.ring{--p:70;--c:var(--ac);width:42px;height:42px;border-radius:50%;background:conic-gradient(var(--c) calc(var(--p)*1%),var(--line) 0);display:grid;place-items:center;grid-row:span 2}
+.ring b{width:33px;height:33px;border-radius:50%;background:var(--panel);display:grid;place-items:center;font-size:12.5px}
+.ring.hi{--c:var(--ok)}.ring.lo{--c:var(--mut)}
+.head{min-width:0}
+h3{margin:0;font-size:15.5px;letter-spacing:-.01em;line-height:1.4;overflow-wrap:anywhere}
+h3 .new{font-size:10.5px;font-weight:700;color:#fff;background:var(--ac);border-radius:6px;padding:1px 6px;margin-left:8px;vertical-align:2px;letter-spacing:.04em}
+.meta{display:flex;flex-wrap:wrap;gap:4px 12px;color:var(--mut);font-size:13px;margin-top:2px;align-items:center}
+.meta .sal{color:var(--ok);font-weight:600}.meta .geo{color:var(--warn)}.meta .okg{color:var(--ok)}
+.acts{display:flex;gap:6px;align-items:flex-start}
+.ibtn{border:1px solid var(--line);background:var(--panel2);border-radius:9px;width:30px;height:30px;display:grid;place-items:center;font-size:14px;color:var(--mut)}
+.ibtn:hover{border-color:var(--ac);color:var(--ac)}.ibtn.on{background:#f59e0b;border-color:#f59e0b;color:#fff}
+.stsel{border:1px solid var(--line);background:var(--panel2);border-radius:9px;padding:0 6px;height:30px;font-size:12.5px;color:var(--mut)}
+.body{grid-column:2/-1;min-width:0}
+.tags{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+.tag{font-size:11.5px;font-weight:600;padding:1px 9px;border-radius:99px;color:var(--c,var(--ac));background:color-mix(in srgb,var(--c,var(--ac)) 13%,transparent)}
+.row{display:flex;gap:6px 8px;flex-wrap:wrap;align-items:center;margin-top:8px;color:var(--mut);font-size:13px}
+.pill{font-size:12.5px;padding:1px 9px;border-radius:99px;background:var(--panel2);border:1px solid var(--line);color:var(--mut);text-decoration:none}
+a.pill{color:var(--ac);border-color:color-mix(in srgb,var(--ac) 30%,var(--line))}a.pill:hover{background:var(--acsoft)}
+.cbtn{display:inline-flex;gap:6px;align-items:center;border:1px solid var(--line);background:var(--panel2);border-radius:9px;padding:3px 10px;text-decoration:none;color:var(--fg);font-size:13px}
+.cbtn:hover{border-color:var(--ac);color:var(--ac)}.cbtn.cp{padding:3px 7px;color:var(--mut)}
+.warn{margin-top:10px;background:var(--warnbg);color:var(--warn);border-radius:10px;padding:6px 10px;font-size:12.5px;display:flex;gap:8px}
+details{margin-top:8px}summary{cursor:pointer;color:var(--mut);font-size:12.5px;list-style:none;width:max-content}summary::before{content:"▸ "}details[open] summary::before{content:"▾ "}
+summary:hover{color:var(--ac)}
+pre{white-space:pre-wrap;word-break:break-word;font:inherit;background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:10px 12px;margin:8px 0 0;max-height:340px;overflow:auto}
+.dense .card{padding:9px 14px}.dense .tags,.dense .meta{margin-top:2px}.dense .row{margin-top:4px}.dense .ring{width:34px;height:34px}.dense .ring b{width:26px;height:26px;font-size:11px}.dense .card{grid-template-columns:34px minmax(0,1fr) auto}.dense h3{font-size:14.5px}
+.more{display:block;margin:14px auto 0}
+.empty{text-align:center;color:var(--mut);padding:56px 20px;background:var(--panel);border:1px dashed var(--line);border-radius:var(--r)}
+.empty b{display:block;color:var(--fg);font-size:15px;margin-bottom:6px}
+.skel{height:108px;border-radius:var(--r);background:linear-gradient(90deg,var(--panel) 25%,var(--panel2) 50%,var(--panel) 75%);background-size:200% 100%;animation:sh 1.2s infinite;border:1px solid var(--line)}
+@keyframes sh{to{background-position:-200% 0}}
+.toast{position:fixed;bottom:22px;left:50%;transform:translate(-50%,16px);background:var(--fg);color:var(--bg);padding:9px 12px 9px 16px;border-radius:12px;opacity:0;transition:.2s;pointer-events:none;font-weight:600;display:flex;gap:12px;align-items:center;z-index:30;max-width:90vw}
+.toast.show{opacity:1;transform:translate(-50%,0);pointer-events:auto}
+.toast button{border:0;background:rgba(127,127,127,.25);color:inherit;border-radius:8px;padding:3px 10px;font-weight:700}
+.modal{position:fixed;inset:0;background:rgba(5,7,15,.5);display:none;place-items:center;z-index:40;padding:16px}
+.modal.show{display:grid}.sheet{background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:20px 24px;max-width:420px;width:100%;box-shadow:var(--shadow)}
+.sheet h4{margin:0 0 12px;font-size:16px}.sheet dl{display:grid;grid-template-columns:auto 1fr;gap:8px 16px;margin:0}.sheet dt{text-align:right}.sheet dd{margin:0;color:var(--mut)}
+.scrim{display:none}
+.sheet.wide{max-width:760px;max-height:88vh;overflow:auto;padding:0}
+.sheet.wide .shead{position:sticky;top:0;background:var(--panel);border-bottom:1px solid var(--line);padding:16px 22px;display:flex;justify-content:space-between;align-items:center;z-index:1}
+.sheet.wide .shead h4{margin:0}.sheet.wide .sbody{padding:6px 22px 22px;display:grid;gap:22px}
+.set h5{margin:14px 0 4px;font-size:14px}.set p.hint{margin:0 0 10px;color:var(--mut);font-size:12.5px}
+.field{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.field input,.field select,.inp{border:1px solid var(--line);background:var(--panel2);border-radius:9px;padding:7px 10px;min-width:0}
+.field input:focus,.inp:focus{outline:none;border-color:var(--ac);box-shadow:0 0 0 3px var(--acsoft)}
+.roles{display:grid;gap:6px}
+.rrow{display:grid;grid-template-columns:auto minmax(0,1fr) auto auto;gap:10px;align-items:center;padding:8px 10px;border:1px solid var(--line);border-radius:10px;background:var(--panel2)}
+.rrow.off{opacity:.55}
+.rrow .nm{font-weight:600}.rrow .kw{color:var(--mut);font-size:12.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.rrow .w{font-size:12px;color:var(--mut);background:var(--panel);border:1px solid var(--line);border-radius:99px;padding:0 8px}
+.rform{display:grid;grid-template-columns:1fr 2fr 90px;gap:8px;margin-top:10px}
+.rform .full{grid-column:1/-1;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.tpls{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+.err{color:var(--warn);font-size:12.5px;min-height:18px}
+.saveq{display:flex;gap:6px;margin:8px 4px 0}.saveq input{flex:1;min-width:0;border:1px solid var(--line);background:var(--panel2);border-radius:9px;padding:5px 9px;font-size:12.5px}
+.saveq button{border:1px solid var(--line);background:var(--panel);border-radius:9px;padding:0 10px;font-size:12.5px;color:var(--ac)}
+.chipbtn .x{margin-left:6px;opacity:.6}.chipbtn .x:hover{opacity:1}
+.nextrun{font-size:12px;color:var(--mut);white-space:nowrap}
+@media(max-width:700px){.rform{grid-template-columns:1fr}.nextrun{display:none}}
+
+@media(min-width:961px){
+  body.side-collapsed aside{padding:14px 8px;overflow:hidden}
+  body.side-collapsed aside>*:not(.brand){display:none}
+  body.side-collapsed .brand{flex-direction:column;gap:12px;margin:0}
+  body.side-collapsed .bname{display:none}
+  body.side-collapsed .brand .sidetoggle{margin:0}
+}
+@media(max-width:960px){.brand .sidetoggle{display:none}}
+@media(max-width:1279px){
+  .detail-panel{position:fixed;right:0;top:0;bottom:0;width:min(560px,94vw);z-index:25;transform:translateX(104%);transition:transform .22s;box-shadow:-12px 0 40px -16px rgba(0,0,0,.5)}
+  body.detail .detail-panel{transform:none}
+  body.detail .dscrim{display:block;position:fixed;inset:0;background:rgba(5,7,15,.45);z-index:22}
+}
+@media(min-width:1280px){.only-narrow{display:none!important}}
+@media(max-width:960px){
+  .app{grid-template-columns:1fr}
+  aside{position:fixed;left:0;top:0;bottom:0;width:300px;max-width:86vw;z-index:20;transform:translateX(-102%);transition:transform .22s;box-shadow:var(--shadow)}
+  body.drawer aside{transform:none}
+  body.drawer .scrim{display:block;position:fixed;inset:0;background:rgba(5,7,15,.45);z-index:15}
+  .only-m{display:inline-flex}
+  main{padding:0 14px 80px}.stats{grid-template-columns:repeat(2,1fr)}
+}
+@media(max-width:560px){.card{grid-template-columns:38px minmax(0,1fr);}.acts{grid-column:2;justify-content:flex-start}.ring{grid-row:auto}.search kbd{display:none}.btn .lbl{display:none}}
+</style>
+</head>
+<body>
+<div class="app">
+<aside id="side" aria-label="筛选">
+  <div class="brand"><div class="logo">✦</div><span class="bname">岗位看板</span><button class="sidetoggle" id="sideToggle" title="收起侧栏 (b)" aria-label="收起侧栏">«</button></div>
+
+  <div class="sec">匹配度</div>
+  <div class="seg" id="seg" role="group" aria-label="匹配度"></div>
+
+  <div class="sec">发布时间</div>
+  <div class="seg" id="segSince" role="group" aria-label="发布时间"></div>
+
+  <div class="sec">方向 <button data-clear="roles" id="clrRoles" hidden>清除</button></div>
+  <div class="chips" id="roles"></div>
+
+  <div class="sec">条件</div>
+  <label class="switch">仅远程<input type="checkbox" id="fRemote"></label>
+  <label class="switch" title="隐藏标注了「不收个人信息」「博彩」等风险的岗位">隐藏有风险提示<input type="checkbox" id="fRisk"></label>
+  <label class="switch" title="隐藏标明仅限美国/欧洲等地区的岗位">隐藏限地区岗位<input type="checkbox" id="fGeo"></label>
+  <label class="switch" title="岗位写明雇主可办理签证担保（或官方标明，如加拿大 LMIA）；明确写“不提供担保”的不算">只看雇主担保签证<input type="checkbox" id="fVisa"></label>
+
+  <div class="sec">常用搜索</div>
+  <div id="savedq"></div>
+
+  <div class="sec">来源 <button data-clear="srcs" id="clrSrcs" hidden>清除</button></div>
+  <div id="srcs"></div>
+</aside>
+<div class="scrim" id="scrim"></div>
+
+<main>
+  <div class="bar">
+    <button class="btn ico only-m" id="openSide" aria-label="打开筛选">☰ <span class="lbl">筛选</span></button>
+    <div class="search">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+      <input id="q" placeholder="搜索岗位、公司、频道、联系人…" aria-label="搜索" autocomplete="off">
+      <kbd>/</kbd>
+    </div>
+    <span class="nextrun" id="nextrun"></span>
+    <button class="btn ico" id="settingsBtn" title="设置：刷新间隔、常见岗位、每日摘要" aria-label="设置">⚙</button>
+    <button class="btn ico" id="theme" title="切换主题：自动 / 浅色 / 深色" aria-label="切换主题">◐</button>
+    <button class="btn ico" id="help" title="键盘快捷键 (?)" aria-label="快捷键">⌨</button>
+    <button class="btn p" id="refresh"><span class="spin"></span><span id="rl">刷新</span></button>
+  </div>
+
+  <div class="stats" id="stats"></div>
+  <div class="tabs" id="tabs" role="tablist"></div>
+
+  <div class="tools">
+    <div class="active" id="active"></div>
+    <div class="right">
+      <span class="count" id="count"></span>
+      <div class="seg" id="sort" role="group" aria-label="排序"></div>
+      <button class="btn ico" id="dense" title="紧凑 / 舒适" aria-label="切换密度" aria-pressed="false">☰</button>
+    </div>
+  </div>
+
+  <div class="list" id="list"></div>
+  <div style="height:1px" id="sentinel"></div>
+</main>
+<section class="detail-panel" id="detail" aria-label="岗位详情"></section>
+</div>
+
+<div class="dscrim" id="dscrim"></div>
+<div class="modal" id="settings" role="dialog" aria-label="设置"><div class="sheet wide">
+  <div class="shead"><h4>⚙ 设置</h4><button class="btn ico" data-closeset aria-label="关闭">✕</button></div>
+  <div class="sbody set" id="setbody"></div></div></div>
+<div class="toast" id="toast" role="status"></div>
+<div class="modal" id="modal" role="dialog" aria-label="快捷键"><div class="sheet">
+  <h4>键盘快捷键</h4>
+  <dl>
+    <dt><kbd>j</kbd> <kbd>k</kbd></dt><dd>下一条 / 上一条</dd>
+    <dt><kbd>s</kbd></dt><dd>标记「感兴趣」（再按取消）</dd>
+    <dt><kbd>a</kbd></dt><dd>标记「已投」</dd>
+    <dt><kbd>x</kbd></dt><dd>忽略（可撤销）</dd>
+    <dt><kbd>o</kbd></dt><dd>打开原帖 / 申请页</dd>
+    <dt><kbd>Enter</kbd></dt><dd>打开右侧详情（窄屏）</dd>
+    <dt><kbd>Esc</kbd></dt><dd>关闭详情 / 弹窗</dd>
+    <dt><kbd>/</kbd></dt><dd>搜索（支持 空格=且、|=或、-词=排除、"短语"）</dd>
+    <dt><kbd>r</kbd></dt><dd>刷新数据</dd>
+    <dt><kbd>b</kbd></dt><dd>收起 / 展开左侧栏</dd>
+    <dt><kbd>?</kbd></dt><dd>显示本帮助</dd>
+  </dl></div></div>
+
+<script>
+const STATUS=[["all","全部"],["new","新"],["interested","感兴趣"],["applied","已投"],["replied","已回复"],["ignored","忽略"]];
+let ROLES=[["flutter","Flutter"],["ios","iOS"],["android","Android"],["mobile","移动端"],["frontend","前端"],["fullstack","全栈"]];  // replaced by /api/roles
+let ROLE_FULL=[],SET={refresh_minutes:60,digest_enabled:false,digest_time:"09:00",saved_searches:[],next_fetch_at:null};
+const BASE_COL={flutter:"var(--t-flutter)",ios:"var(--t-ios)",android:"var(--t-android)",mobile:"var(--t-mobile)",frontend:"var(--t-frontend)",fullstack:"var(--t-fullstack)"};
+const tagColor=k=>{if(BASE_COL[k])return BASE_COL[k];let h=0;for(const c of k)h=(h*31+c.charCodeAt(0))%360;return `hsl(${h} 62% 52%)`};
+const TEMPLATES=[["React Native","react native, reactnative",7],["鸿蒙","鸿蒙, harmonyos, arkts, openharmony",7],["小程序","小程序, miniprogram, uni-app, uniapp",5],
+  ["Kotlin 多平台","kotlin multiplatform, kmp, compose multiplatform",6],["Unity / 游戏客户端","unity, unreal, 游戏客户端",5],["Web3 前端","dapp, web3.js, ethers.js, wagmi",5],
+  ["UI 动效 / Lottie","lottie, rive, 动效",4],["SwiftUI","swiftui, combine",7]];
+async function api(method,url,body){
+  const r=await fetch(url,{method,headers:{"Content-Type":"application/json"},body:body===undefined?undefined:JSON.stringify(body)});
+  const j=await r.json().catch(()=>({}));
+  if(!r.ok)throw new Error(typeof j.detail==="string"?j.detail:"请求失败（"+r.status+"）");
+  return j;
+}
+const LEVELS=[[1,"宽松"],[5,"推荐"],[10,"严格"]];
+const SORTS=[["score","最匹配"],["new","最新"]];
+const SINCES=[["","不限"],["1d","1 天"],["3d","3 天"],["7d","1 周"],["30d","1 月"]];
+const SINCE_MS={"1d":864e5,"3d":3*864e5,"7d":7*864e5,"30d":30*864e5};
+const PAGE=40,LS="jb2";
+const DEF={sideCollapsed:false,status:"all",min:5,since:"",roles:[],srcs:[],remote:false,hideRisk:false,hideGeo:false,visa:false,q:"",sort:"score",dense:false,theme:"auto",closed:{telegram:true}};
+const $=(s,r=document)=>r.querySelector(s);
+const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+let S;try{S={...DEF,...JSON.parse(localStorage.getItem(LS)||"{}")}}catch(e){S={...DEF}}
+const save=()=>{try{localStorage.setItem(LS,JSON.stringify(S))}catch(e){}};
+let jobs=[],chats=[],limit=PAGE,sel=null,loaded=false,view=[];
+const has=(a,x)=>a.includes(x),toggle=(a,x)=>has(a,x)?a.filter(y=>y!==x):[...a,x];
+const kindNames=k=>[...new Set([...jobs.flatMap(j=>j.sources.filter(x=>x.kind===k).map(x=>x.chat)),...(k==="telegram"?chats.map(c=>c.title):[])])];
+const KIND_LABEL={site:"🌐 招聘网站",telegram:"✈️ Telegram"};
+const lab=k=>(ROLES.find(r=>r[0]===k)||[0,k])[1];
+const utc=s=>new Date(String(s).includes("T")||String(s).endsWith("Z")?s:String(s).replace(" ","T")+"Z");
+function ago(d){const m=(Date.now()-d)/6e4;if(m<1)return"刚刚";if(m<60)return Math.floor(m)+" 分钟前";if(m<1440)return Math.floor(m/60)+" 小时前";const dd=Math.floor(m/1440);return dd<31?dd+" 天前":Math.floor(dd/30)+" 个月前"}
+
+/* ---------- filtering ---------- */
+let _pq={q:null,v:null};
+function parseQuery(q){   // space = AND, a|b = OR, -term = exclude, "exact phrase"
+  if(_pq.q===q)return _pq.v;
+  const must=[],not=[];
+  for(const m of q.matchAll(/(-?)"([^"]+)"|(-?)(\S+)/g)){
+    const neg=(m[1]||m[3])==="-",raw=(m[2]??m[4]).toLowerCase();
+    const alts=raw.split("|").map(x=>x.trim()).filter(Boolean);
+    if(alts.length)(neg?not:must).push(alts);
+  }
+  _pq={q,v:{must,not}};return _pq.v;
+}
+const hay=j=>j._hay??(j._hay=(j.title+" "+(j.company||"")+" "+j.text+" "+j.sources.map(x=>x.chat).join(" ")+" "+JSON.stringify(j.contacts)).toLowerCase());
+function match(j,s,skip){
+  if(j.score<s.min)return false;
+  if(s.since&&(j._t??=utc(j.posted_at).getTime())<Date.now()-SINCE_MS[s.since])return false;
+  if(skip!=="status"&&(s.status==="all"?j.status==="ignored":j.status!==s.status))return false;
+  if(s.roles.length&&!j.tags.some(t=>has(s.roles,t)))return false;
+  if(skip!=="srcs"&&s.srcs.length&&!j.sources.some(x=>has(s.srcs,x.chat)))return false;
+  if(s.remote&&!j.remote)return false;
+  if(s.hideRisk&&j.risks.length)return false;
+  if(s.hideGeo&&j.geo==="restricted")return false;
+  if(s.visa&&j.visa!=="yes")return false;
+  const q=s.q.trim();
+  if(q){const {must,not}=parseQuery(q),h=hay(j);
+    if(!must.every(alts=>alts.some(a=>h.includes(a)))||not.some(alts=>alts.some(a=>h.includes(a))))return false}
+  return true;
+}
+const filtered=(skip)=>jobs.filter(j=>match(j,S,skip));
+function sorted(list){
+  const by=S.sort==="new"?(a,b)=>(a.posted_at<b.posted_at?1:-1):(a,b)=>b.score-a.score||(a.posted_at<b.posted_at?1:-1);
+  return list.slice().sort(by);
+}
+
+/* ---------- render: sidebar ---------- */
+function renderSide(){
+  $("#seg").innerHTML=LEVELS.map(([v,l])=>`<button class="${S.min===v?"on":""}" data-m="${v}" aria-pressed="${S.min===v}">${l}</button>`).join("");
+  $("#segSince").innerHTML=SINCES.map(([v,l])=>`<button class="${S.since===v?"on":""}" data-since="${v}" aria-pressed="${S.since===v}">${l}</button>`).join("");
+  $("#roles").innerHTML=ROLES.map(([k,l])=>`<button class="chipbtn ${has(S.roles,k)?"on":""}" data-r="${k}" aria-pressed="${has(S.roles,k)}">${l}</button>`).join("");
+  $("#clrRoles").hidden=!S.roles.length;$("#clrSrcs").hidden=!S.srcs.length;
+  $("#fRemote").checked=S.remote;$("#fRisk").checked=S.hideRisk;$("#fGeo").checked=S.hideGeo;$("#fVisa").checked=S.visa;
+
+  const sq=SET.saved_searches||[],cur=S.q.trim(),already=sq.some(x=>x.q===cur);
+  $("#savedq").innerHTML=(sq.length?`<div class="chips">${sq.map((x,i)=>`<span class="chipbtn ${S.q===x.q?"on":""}" data-sq="${i}" role="button" tabindex="0" title="${esc(x.q)}">${esc(x.name)}<b class="x" data-sqdel="${i}" aria-label="删除" title="删除">×</b></span>`).join("")}</div>`:'<div class="count" style="padding:0 6px;font-size:12.5px">在搜索框输入关键词，可保存为常用搜索</div>')+
+    (cur&&!already?`<div class="saveq"><input id="sqname" placeholder="名称" value="${esc(cur.slice(0,14))}" maxlength="30" aria-label="常用搜索名称"><button data-sqsave>保存</button></div>`:"");
+  const base=filtered("srcs"),cnt=n=>base.filter(j=>j.sources.some(x=>x.chat===n)).length;
+  const sites={};jobs.forEach(j=>j.sources.forEach(x=>{if(x.kind==="site")sites[x.chat]=1}));
+  const defs=[
+    ["site","🌐 招聘网站",Object.keys(sites).map(n=>({n,url:null}))],
+    ["telegram","✈️ Telegram",chats.map(c=>({n:c.title,url:c.url}))]
+  ];
+  $("#srcs").innerHTML=defs.map(([k,label,items])=>{
+    if(!items.length)return"";
+    items=items.map(i=>({...i,c:cnt(i.n)})).sort((a,b)=>b.c-a.c||a.n.localeCompare(b.n));
+    const names=items.map(i=>i.n),allOn=names.every(n=>has(S.srcs,n)),total=base.filter(j=>j.sources.some(x=>x.kind===k)).length;
+    return `<div class="grp ${S.closed[k]?"closed":""}"><div class="ghead">
+      <button class="chev" data-fold="${k}" aria-label="展开/收起">▾</button>
+      <button class="gsel ${allOn?"on":""}" data-grp="${k}" title="只看这一组 / 取消">${label}<span>${total}</span></button></div>
+      <div class="rows">${items.map(i=>`<div class="srow ${has(S.srcs,i.n)?"on":""} ${i.c?"":"zero"}" data-src="${esc(i.n)}" role="checkbox" aria-checked="${has(S.srcs,i.n)}" tabindex="0" title="${esc(i.n)}">
+        <span class="chk"></span><b>${esc(i.n)}</b><i>${i.c}</i>${i.url?`<a class="ext" href="${esc(i.url)}" target="_blank" rel="noopener" title="在 Telegram 打开频道" aria-label="打开频道">↗</a>`:"<span></span>"}</div>`).join("")}</div></div>`;
+  }).join("")||'<div class="count" style="padding:0 8px">暂无来源</div>';
+}
+
+/* ---------- render: main ---------- */
+function renderStats(){
+  const all=jobs.filter(j=>j.score>=S.min),day=Date.now()-864e5;
+  const c=[["今日新增",all.filter(j=>utc(j.first_seen)>day&&j.status!=="ignored").length,"#5b5bf0"],
+    ["待处理",all.filter(j=>j.status==="new").length,"#0ea5e9"],
+    ["已投递",all.filter(j=>["applied","replied"].includes(j.status)).length,"#12a36b"],
+    ["有风险提示",all.filter(j=>j.risks.length&&j.status!=="ignored").length,"#ea580c"]];
+  $("#stats").innerHTML=c.map(([k,v,col])=>`<div class="stat" style="--c:${col}"><span class="k">${k}</span><span class="v">${v}</span></div>`).join("");
+}
+function renderTabs(){
+  $("#tabs").innerHTML=STATUS.map(([k,l])=>{const n=jobs.filter(j=>match(j,S,"status")&&(k==="all"?j.status!=="ignored":j.status===k)).length;
+    return `<button class="tab ${S.status===k?"on":""}" data-s="${k}" role="tab" aria-selected="${S.status===k}">${l}<span class="n">${n}</span></button>`}).join("");
+  $("#sort").innerHTML=SORTS.map(([k,l])=>`<button class="${S.sort===k?"on":""}" data-sort="${k}">${l}</button>`).join("");
+  const d=$("#dense");d.setAttribute("aria-pressed",S.dense);d.textContent=S.dense?"▤":"☰";document.body.classList.toggle("dense",S.dense);
+}
+function renderActive(){
+  const f=[];
+  if(S.q.trim())f.push(["q","搜索："+S.q.trim().slice(0,20)]);
+  if(S.since)f.push(["since","最近 "+SINCES.find(x=>x[0]===S.since)[1]]);
+  S.roles.forEach(r=>f.push(["role:"+r,lab(r)]));
+  let rest=S.srcs.slice();
+  for(const k of ["site","telegram"]){            // a fully selected group is one chip, not N
+    const names=kindNames(k);
+    if(names.length&&names.every(n=>has(S.srcs,n))){f.push(["grp:"+k,KIND_LABEL[k]+"（全部）"]);rest=rest.filter(n=>!names.includes(n))}
+  }
+  rest.forEach(r=>f.push(["src:"+r,r.length>14?r.slice(0,13)+"…":r]));
+  if(S.remote)f.push(["remote","仅远程"]);if(S.hideRisk)f.push(["risk","隐藏风险"]);if(S.hideGeo)f.push(["geo","隐藏限地区"]);if(S.visa)f.push(["visa","担保签证"]);
+  $("#active").innerHTML=f.map(([k,t])=>`<button class="af" data-rm="${esc(k)}" aria-label="移除筛选 ${esc(t)}">${esc(t)} <span>✕</span></button>`).join("")+(f.length>1?`<button class="clear" data-clearall>清除全部</button>`:"");
+}
+function actionsHtml(j){
+  return `<div class="acts">
+    <button class="ibtn ${j.status==="interested"?"on":""}" data-st="${j.status==="interested"?"new":"interested"}" title="感兴趣 (s)" aria-label="感兴趣" aria-pressed="${j.status==="interested"}">★</button>
+    <select class="stsel" data-sel aria-label="状态">${STATUS.slice(1).map(([k,l])=>`<option value="${k}" ${j.status===k?"selected":""}>${l}</option>`).join("")}</select></div>`;
+}
+function contacts(c){
+  const o=[];
+  c.telegram.forEach(h=>o.push(`<a class="cbtn" href="https://t.me/${esc(h.slice(1))}" target="_blank" rel="noopener">✈️ ${esc(h)}</a><button class="cbtn cp" data-copy="${esc(h)}" title="复制" aria-label="复制 ${esc(h)}">⧉</button>`));
+  c.email.forEach(e=>o.push(`<a class="cbtn" href="mailto:${esc(e)}">✉️ ${esc(e)}</a><button class="cbtn cp" data-copy="${esc(e)}" title="复制" aria-label="复制 ${esc(e)}">⧉</button>`));
+  c.links.slice(0,2).forEach(l=>{const u=l.startsWith("http")?l:"https://"+l;o.push(`<a class="cbtn" href="${esc(u)}" target="_blank" rel="noopener">🔗 ${esc(u.replace(/^https?:\/\/(www\.)?/,"").slice(0,30))}</a>`)});
+  return o.length?o.join(""):`<span class="pill">正文无联系方式 · 去频道看按钮或置顶</span>`;
+}
+function srcPills(sources){
+  const seen=new Map();sources.forEach(s=>{if(!seen.has(s.chat_id))seen.set(s.chat_id,s)});
+  const all=[...seen.values()],shown=all.slice(0,3);
+  return shown.map(s=>s.url?`<a class="pill" href="${esc(s.url)}" target="_blank" rel="noopener" title="在 Telegram / 原站打开原帖">${esc(s.chat.slice(0,22))} ↗</a>`:`<span class="pill">${esc(s.chat.slice(0,22))}</span>`).join("")+(all.length>3?`<span>+${all.length-3}</span>`:"");
+}
+function chHome(sources){
+  const seen=new Map();sources.forEach(s=>{if(s.channel_url&&!seen.has(s.chat_id))seen.set(s.chat_id,s)});
+  return seen.size?`<div class="row">频道主页：${[...seen.values()].map(s=>`<a class="cbtn" href="${esc(s.channel_url)}" target="_blank" rel="noopener">${esc(s.chat.slice(0,22))} ↗</a>`).join("")}</div>`:"";
+}
+function card(j){
+  const p=Math.min(100,j.score*7),ringCls=j.score>=10?"hi":j.score<6?"lo":"";
+  const isNew=Date.now()-utc(j.first_seen)<864e5&&j.status==="new";
+  const posted=utc(j.posted_at);
+  const geo=j.geo==="worldwide"?`<span class="okg" title="${esc(j.location||"")}">🌍 全球可申请</span>`:j.geo==="restricted"?`<span class="geo" title="${esc(j.location||"")}">🚧 限地区：${esc((j.location||"").slice(0,26))}</span>`:(j.location?`<span>📍 ${esc(j.location.slice(0,26))}</span>`:"");
+  const visa=j.visa==="yes"?`<span class="okg" title="岗位写明雇主可办理签证担保，或官方标明（如加拿大 LMIA）。申请前请向雇主确认">🛂 担保签证</span>`:j.visa==="maybe"?`<span title="提到搬迁/安家支持，不一定包含签证担保">✈ 含搬迁支持</span>`:"";
+  return `<article class="card ${j.status} ${sel===j.id?"sel":""}" data-id="${j.id}">
+    <div class="ring ${ringCls}" style="--p:${p}" title="匹配度 ${j.score}"><b>${j.score}</b></div>
+    <div class="head"><h3>${esc(j.title)}${isNew?'<span class="new">NEW</span>':""}</h3>
+      <div class="meta">${j.company?`<span>🏢 ${esc(j.company)}</span>`:""}${j.salary?`<span class="sal">💰 ${esc(j.salary)}</span>`:""}${j.remote?"<span>🏠 远程</span>":""}${geo}${visa}<span title="${esc(posted.toLocaleString())}">🕒 ${ago(posted)}</span></div></div>
+    ${actionsHtml(j)}
+    <div class="body">
+      <div class="tags">${j.tags.map(t=>`<span class="tag" style="--c:${tagColor(t)}">${esc(lab(t))}</span>`).join("")}</div>
+      <div class="row">📣 ${srcPills(j.sources)}</div>
+      <div class="row">👤 ${contacts(j.contacts)}</div>
+      ${j.risks.length?`<div class="warn">⚠️ <span>${j.risks.map(esc).join("；")} — 谨慎核实，不要提交证件或预付费用</span></div>`:""}
+    </div></article>`;
+}
+const LINK_RE=/(https?:\/\/(?:(?!&quot;|&#39;|&lt;|&gt;)[^\s<>"')\]】])+)|([\w.+-]+@[\w-]+(?:\.[\w-]+)+)|(^|[\s(（:：>])@([A-Za-z][A-Za-z0-9_]{4,31})/g;
+function linkify(text){   // escape first, then link in ONE pass so URLs/emails never get linked twice
+  return esc(text).replace(LINK_RE,(m,url,mail,pre,h)=>url?`<a href="${url}" target="_blank" rel="noopener">${url}</a>`
+    :mail?`<a href="mailto:${mail}">${mail}</a>`:`${pre}<a href="https://t.me/${h}" target="_blank" rel="noopener">@${h}</a>`);
+}
+function originalText(j){   // job sites: drop the 3 header lines we prepended (title / company line / tags)
+  return j.company!==null&&j.company!==undefined?j.text.split("\n").slice(3).join("\n").trim()||j.text:j.text;
+}
+function renderDetail(keepScroll){
+  const el=$("#detail"),j=jobs.find(x=>x.id===sel),top=keepScroll?el.scrollTop:0;
+  if(!j){el.innerHTML=`<div class="dp-empty"><div class="big">📄</div><b>选择左侧的岗位</b>这里会显示完整的原始招聘信息、联系方式和原帖链接。<br><br>用 <kbd>j</kbd> <kbd>k</kbd> 切换上一条下一条。</div>`;return}
+  const i=view.findIndex(x=>x.id===j.id),posted=utc(j.posted_at);
+  const seenSrc=new Map();j.sources.forEach(s=>{if(!seenSrc.has(s.chat_id))seenSrc.set(s.chat_id,s)});
+  const primary=(j.sources.find(s=>s.url)||{}).url||(j.contacts.links[0]&&(j.contacts.links[0].startsWith("http")?j.contacts.links[0]:"https://"+j.contacts.links[0]));
+  const geo={worldwide:"🌍 全球可申请",restricted:"🚧 限地区",unknown:""}[j.geo]||"";
+  const facts=[["匹配度",`${j.score}（${j.tags.map(lab).join("、")||"—"}）`],["公司",j.company],["薪资",j.salary],["地点",[j.location,geo].filter(Boolean).join(" · ")],["签证",{yes:"🛂 雇主可办理担保（请向雇主确认）",maybe:"✈ 提到搬迁支持，签证未明确"}[j.visa]||""],
+    ["方式",j.remote?"远程":""],["发布",posted.toLocaleString()+"（"+ago(posted)+"）"]].filter(f=>f[1]);
+  el.setAttribute("data-id",j.id);
+  el.innerHTML=`<div class="dp-top">
+      <button class="ibtn only-narrow" data-closedetail aria-label="关闭详情" title="关闭 (Esc)">✕</button>
+      <span class="count">${i>=0?`${i+1} / ${view.length}`:""}</span><span class="sp"></span>
+      <button class="ibtn" data-nav="-1" title="上一条 (k)" aria-label="上一条">↑</button><button class="ibtn" data-nav="1" title="下一条 (j)" aria-label="下一条">↓</button></div>
+    <div class="dp-body">
+      <h2>${esc(j.title)}</h2>
+      <dl class="facts">${facts.map(([k,v])=>`<dt>${k}</dt><dd>${esc(v)}</dd>`).join("")}</dl>
+      ${j.risks.length?`<div class="warn">⚠️ <span>${j.risks.map(esc).join("；")} — 谨慎核实，不要提交证件或预付费用</span></div>`:""}
+      <div><div class="dp-sec">联系方式</div><div class="row" style="margin-top:0">${contacts(j.contacts)}</div></div>
+      <div><div class="dp-sec">原始招聘信息 <button data-copytext>复制全文</button></div><div class="orig">${linkify(originalText(j))}</div></div>
+      <div><div class="dp-sec">来源</div>${[...seenSrc.values()].map(s=>`<div class="srcrow"><span class="nm" title="${esc(s.chat)}">${s.kind==="site"?"🌐":"✈️"} ${esc(s.chat)}</span><span class="dt">${esc(utc(s.date).toLocaleDateString())}</span>
+        <span>${s.url?`<a class="cbtn" href="${esc(s.url)}" target="_blank" rel="noopener">原帖 ↗</a> `:""}${s.channel_url?`<a class="cbtn" href="${esc(s.channel_url)}" target="_blank" rel="noopener">频道 ↗</a>`:""}</span></div>`).join("")}</div>
+    </div>
+    <div class="dp-foot">${primary?`<a class="btn p" href="${esc(primary)}" target="_blank" rel="noopener">打开原帖 / 申请 ↗</a>`:""}
+      <div class="seg" role="group" aria-label="状态">${STATUS.slice(1).map(([k,l])=>`<button class="${j.status===k?"on":""}" data-st="${k}">${l}</button>`).join("")}</div></div>`;
+  el.scrollTop=top;
+}
+function renderList(){
+  if(!loaded){$("#list").innerHTML='<div class="skel"></div><div class="skel"></div><div class="skel"></div>';$("#count").textContent="";return}
+  view=sorted(filtered());
+  $("#count").textContent=`${view.length} 条`;
+  if(!view.length){
+    const hint=S.min>1?"试试把匹配度调到「宽松」":"试试清除部分筛选条件";
+    $("#list").innerHTML=`<div class="empty"><b>没有符合条件的岗位</b>${hint}，或点右上角「刷新」拉取最新数据。</div>`;return}
+  $("#list").innerHTML=view.slice(0,limit).map(card).join("")+(view.length>limit?`<button class="btn more" data-more>显示更多（还有 ${view.length-limit} 条）</button>`:"");
+}
+const PRESETS=[[0,"关闭"],[15,"每 15 分钟"],[30,"每 30 分钟"],[60,"每 1 小时"],[120,"每 2 小时"],[360,"每 6 小时"],[720,"每 12 小时"],[1440,"每 24 小时"]];
+let roleEdit=null,roleErr="";
+function renderSettings(){
+  const m=SET.refresh_minutes,preset=PRESETS.some(p=>p[0]===m)?m:"custom";
+  const ed=roleEdit?ROLE_FULL.find(r=>r.id===roleEdit):null;
+  $("#setbody").innerHTML=`
+  <section><h5>自动刷新</h5><p class="hint">看板服务开着时，按这个间隔自动抓取 Telegram 频道和各招聘网站。Remotive、HN 有各自的 6 小时最小间隔（遵守站点条款），手动「刷新」不受影响。</p>
+    <div class="field"><select id="setRefresh" aria-label="刷新间隔">${PRESETS.map(([v,l])=>`<option value="${v}" ${preset===v?"selected":""}>${l}</option>`).join("")}<option value="custom" ${preset==="custom"?"selected":""}>自定义…</option></select>
+      <span id="customWrap" ${preset==="custom"?"":"hidden"}><input id="setCustom" class="inp" type="number" min="5" max="1440" step="1" value="${m>0?m:60}" style="width:90px" aria-label="自定义分钟数"> 分钟（5–1440）</span>
+      <span class="nextrun">${esc(nextRunText(m,SET.next_fetch_at))}</span></div><div class="err" id="refErr"></div></section>
+  <section><h5>每日摘要</h5><p class="hint">每天定时把最匹配的岗位发到你 Telegram 的「已保存消息」（只发给你自己），需要看板服务保持运行。</p>
+    <div class="field"><label class="switch" style="padding:0"><input type="checkbox" id="setDigest" ${SET.digest_enabled?"checked":""}> 启用&nbsp;</label>
+      <input id="setDigestTime" class="inp" type="time" value="${esc(SET.digest_time||"09:00")}" aria-label="摘要时间"></div></section>
+  <section><h5>常见岗位</h5><p class="hint">用关键词定义你想找的岗位（逗号分隔，中英文均可）。重要度越高，匹配到时分数越高。修改后会自动给已有岗位重新打分。</p>
+    <div class="roles">${ROLE_FULL.map(r=>`<div class="rrow ${r.enabled?"":"off"}"><label class="switch" style="padding:0" title="启用 / 停用"><input type="checkbox" data-roleon="${r.id}" ${r.enabled?"checked":""}></label>
+      <div style="min-width:0"><div class="nm"><span class="tag" style="--c:${tagColor(r.key)}">${esc(r.label)}</span></div><div class="kw" title="${esc(r.keywords)}">${esc(r.keywords)}</div></div>
+      <span class="w" title="重要度">重要度 ${r.weight}</span>
+      <span><button class="cbtn" data-roleedit="${r.id}">编辑</button> <button class="cbtn" data-roledel="${r.id}" aria-label="删除 ${esc(r.label)}">删除</button></span></div>`).join("")||'<div class="count">还没有岗位</div>'}</div>
+    <div class="rform" id="roleForm"><input class="inp" id="rName" placeholder="岗位名称，如 React Native" maxlength="24" value="${esc(ed?ed.label:"")}" aria-label="岗位名称">
+      <input class="inp" id="rKw" placeholder="关键词，逗号分隔：react native, rn 开发" value="${esc(ed?ed.keywords:"")}" aria-label="关键词">
+      <input class="inp" id="rW" type="number" min="1" max="10" value="${ed?ed.weight:6}" title="重要度 1–10" aria-label="重要度">
+      <div class="full"><button class="btn p" data-rolesave>${ed?"保存修改":"＋ 添加岗位"}</button>${ed?'<button class="btn" data-rolecancel>取消</button>':""}<span class="err" id="roleErr">${esc(roleErr)}</span></div></div>
+    <div class="tpls"><span class="count" style="font-size:12.5px">常用模板：</span>${TEMPLATES.map(([n,k,w],i)=>`<button class="chipbtn" data-tpl="${i}">${esc(n)}</button>`).join("")}</div></section>
+  <section><h5>搜索语法</h5><p class="hint" style="margin:0">空格 = 且；<kbd>a|b</kbd> = 或；<kbd>-词</kbd> = 排除；<kbd>"完整短语"</kbd>。例如 <kbd>flutter|swift 远程 -外包</kbd>。输入后可在侧栏「保存」为常用搜索。</p></section>`;
+}
+function openSettings(){roleEdit=null;roleErr="";renderSettings();$("#settings").classList.add("show")}
+async function saveSetting(patch,errEl){
+  try{SET=await api("PUT","/api/settings",patch);setSync({running:false,refresh_minutes:SET.refresh_minutes,next_fetch_at:SET.next_fetch_at,last_job_seen:null});renderSettings();toast("已保存")}
+  catch(e){if(errEl)errEl.textContent=e.message;else toast(e.message)}
+}
+async function roleCall(method,url,body){
+  try{const r=await api(method,url,body);ROLE_FULL=r.roles;roleEdit=null;roleErr="";await load();toast(`已保存，重新打分 ${r.rescored} 条岗位`)}
+  catch(e){roleErr=e.message;renderSettings()}
+}
+function render(){renderSide();renderStats();renderTabs();renderActive();renderList();renderDetail(true)}
+
+/* ---------- actions ---------- */
+async function saveSearches(list){
+  try{SET=await api("PUT","/api/settings",{saved_searches:list});renderSide();toast("已更新常用搜索")}catch(e){toast(e.message)}
+}
+function toast(t,actionLabel,fn){
+  const e=$("#toast");e.innerHTML=`<span>${esc(t)}</span>`+(actionLabel?`<button>${esc(actionLabel)}</button>`:"");
+  if(actionLabel)e.querySelector("button").onclick=()=>{fn();e.classList.remove("show")};
+  e.classList.add("show");clearTimeout(toast.t);toast.t=setTimeout(()=>e.classList.remove("show"),actionLabel?7000:2200);
+}
+async function setStatus(id,status,withUndo=true){
+  const j=jobs.find(x=>x.id===id);if(!j||j.status===status)return;
+  const old=j.status;j.status=status;
+  const r=await fetch(`/api/jobs/${id}/status`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({status})}).catch(()=>({ok:false}));
+  if(!r.ok){j.status=old;render();toast("保存失败，请重试");return}
+  render();
+  const l=(STATUS.find(s=>s[0]===status)||[0,status])[1];
+  if(withUndo)toast(`已标记为「${l}」`,"撤销",()=>setStatus(id,old,false));
+}
+function openDetail(id){setSel(id,false);document.body.classList.add("detail")}
+function closeDetail(){document.body.classList.remove("detail")}
+function setSel(id,scroll=true){
+  const changed=sel!==id;sel=id;if(changed)renderDetail(false);
+  document.querySelectorAll(".card.sel").forEach(c=>c.classList.remove("sel"));
+  const el=document.querySelector(`.card[data-id="${id}"]`);if(el){el.classList.add("sel");if(scroll)el.scrollIntoView({block:"center",behavior:"smooth"})}
+}
+async function load(){
+  const [a,b,r,st]=await Promise.all([fetch("/api/jobs?min_score=1&limit=3000").then(r=>r.json()),fetch("/api/chats").then(r=>r.json()).catch(()=>({chats:[]})),
+    fetch("/api/roles").then(r=>r.json()).catch(()=>null),fetch("/api/settings").then(r=>r.json()).catch(()=>null)]);
+  jobs=a.jobs;chats=b.chats;loaded=true;
+  if(r){ROLE_FULL=r.roles;ROLES=r.roles.filter(x=>x.enabled).map(x=>[x.key,x.label]);S.roles=S.roles.filter(k=>ROLES.some(x=>x[0]===k))}
+  if(st)SET=st;
+  setSync(a.sync);render();
+  if($("#settings").classList.contains("show"))renderSettings();
+}
+function nextRunText(m,next){
+  if(!m)return"自动刷新：关闭";
+  const lbl=m%60===0?`${m/60} 小时`:`${m} 分钟`;
+  if(!next||next*1000<Date.now())return`自动刷新：每 ${lbl} · 即将开始`;
+  return`自动刷新：每 ${lbl} · 下次 ${new Date(next*1000).toLocaleTimeString([], {hour:"2-digit",minute:"2-digit"})}`;
+}
+function setSync(s){
+  if(s.refresh_minutes!==undefined){SET.refresh_minutes=s.refresh_minutes;SET.next_fetch_at=s.next_fetch_at;$("#nextrun").textContent=nextRunText(s.refresh_minutes,s.next_fetch_at)}
+  const b=$("#refresh");b.disabled=s.running;b.classList.toggle("busy",s.running);
+  $("#rl").textContent=s.running?"刷新中…":"刷新";
+  b.title=s.failed?"上次刷新失败":(s.last_job_seen?"最近入库 "+ago(utc(s.last_job_seen)):"");
+}
+async function refresh(){
+  const r=await fetch("/api/refresh",{method:"POST"}).then(r=>r.json());
+  if(!r.started)toast(r.reason||"已有刷新在进行");
+  setSync({running:true});
+  for(let i=0;i<120;i++){
+    await new Promise(r=>setTimeout(r,1500));
+    const s=await fetch("/api/sync").then(r=>r.json());
+    if(!s.running){const before=jobs.length;await load();toast(s.failed?"刷新失败，请检查终端里 Telegram 是否仍登录":(jobs.length>before?`新增 ${jobs.length-before} 条`:"已是最新"));return}
+  }
+}
+function applySide(){
+  document.body.classList.toggle("side-collapsed",!!S.sideCollapsed);
+  const b=$("#sideToggle");b.textContent=S.sideCollapsed?"»":"«";
+  b.title=S.sideCollapsed?"展开侧栏 (b)":"收起侧栏 (b)";b.setAttribute("aria-label",b.title);
+}
+const toggleSide=()=>{S.sideCollapsed=!S.sideCollapsed;save();applySide()};
+const applyTheme=()=>{if(S.theme==="auto")document.documentElement.removeAttribute("data-theme");else document.documentElement.setAttribute("data-theme",S.theme)};
+const change=()=>{limit=PAGE;save();render()};
+
+document.addEventListener("click",e=>{
+  if(e.target.closest("a"))return;                           // external links behave normally
+  const sqd=e.target.closest("[data-sqdel]");
+  if(sqd){e.stopPropagation();return saveSearches(SET.saved_searches.filter((_,i)=>i!==+sqd.dataset.sqdel))}
+  const sqc=e.target.closest("[data-sq]");
+  if(sqc){const it=SET.saved_searches[+sqc.dataset.sq];if(it){S.q=S.q===it.q?"":it.q;$("#q").value=S.q;change()}return}
+  const t=e.target.closest("button,[data-src]");
+  if(!t){                                                      // click on the card body itself → show it on the right
+    if(e.target.closest("select,summary,input,label"))return;
+    const c=e.target.closest(".card");if(c)openDetail(+c.dataset.id);
+    return;
+  }
+  const d=t.dataset;
+  if(d.s){S.status=d.s;return change()}
+  if(d.m){S.min=+d.m;return change()}
+  if(d.since!==undefined){S.since=d.since;return change()}
+  if(d.r){S.roles=toggle(S.roles,d.r);return change()}
+  if(d.sort){S.sort=d.sort;return change()}
+  if(d.src){S.srcs=toggle(S.srcs,d.src);return change()}
+  if(d.sqsave!==undefined){const q=S.q.trim(),name=($("#sqname")?.value||q).trim()||q;return saveSearches([...(SET.saved_searches||[]),{name,q}])}
+  if(d.closeset!==undefined){$("#settings").classList.remove("show");return}
+  if(d.fold){S.closed={...S.closed,[d.fold]:!S.closed[d.fold]};save();return renderSide()}
+  if(d.grp){
+    const names=kindNames(d.grp);
+    const allOn=names.every(n=>has(S.srcs,n));S.srcs=allOn?S.srcs.filter(n=>!names.includes(n)):[...new Set([...S.srcs,...names])];return change()}
+  if(d.clear){S[d.clear]=[];return change()}
+  if(d.clearall!==undefined){Object.assign(S,{q:"",since:"",roles:[],srcs:[],remote:false,hideRisk:false,hideGeo:false,visa:false});$("#q").value="";return change()}
+  if(d.rm){const k=d.rm;
+    if(k==="q"){S.q="";$("#q").value=""}else if(k==="since")S.since="";else if(k.startsWith("role:"))S.roles=S.roles.filter(x=>x!==k.slice(5));
+    else if(k.startsWith("grp:")){const ns=kindNames(k.slice(4));S.srcs=S.srcs.filter(x=>!ns.includes(x))}
+    else if(k.startsWith("src:"))S.srcs=S.srcs.filter(x=>x!==k.slice(4));else if(k==="remote")S.remote=false;else if(k==="risk")S.hideRisk=false;else if(k==="geo")S.hideGeo=false;else if(k==="visa")S.visa=false;
+    return change()}
+  if(d.more!==undefined){limit+=PAGE;return renderList()}
+  if(d.copy){navigator.clipboard?.writeText(d.copy);return toast("已复制 "+d.copy)}
+  if(d.st){return setStatus(+t.closest("[data-id]").dataset.id,d.st)}
+  if(d.closedetail!==undefined)return closeDetail();
+  if(d.nav){const i=view.findIndex(x=>x.id===sel),n=view[Math.max(0,Math.min(view.length-1,i+ +d.nav))];if(n){if(view.indexOf(n)>=limit){limit=view.indexOf(n)+PAGE;renderList()}setSel(n.id)}return}
+  if(d.copytext!==undefined){const j=jobs.find(x=>x.id===sel);if(j){navigator.clipboard?.writeText(originalText(j));toast("已复制原文")}return}
+  if(e.target.closest("select,summary,input,label"))return;
+  const card=e.target.closest(".card");if(card)openDetail(+card.dataset.id);
+});
+document.addEventListener("click",e=>{
+  const t=e.target.closest("#settings button,#settings [data-tpl]");if(!t)return;const d=t.dataset;
+  if(d.tpl!==undefined){const [n,k,w]=TEMPLATES[+d.tpl];roleEdit=null;$("#rName").value=n;$("#rKw").value=k;$("#rW").value=w;$("#rName").focus();return}
+  if(d.roleedit){roleEdit=+d.roleedit;roleErr="";return renderSettings()}
+  if(d.rolecancel!==undefined){roleEdit=null;roleErr="";return renderSettings()}
+  if(d.roledel){const r=ROLE_FULL.find(x=>x.id===+d.roledel);if(r&&confirm(`删除岗位「${r.label}」？已有岗位会按剩余规则重新打分。`))roleCall("DELETE",`/api/roles/${r.id}`);return}
+  if(d.rolesave!==undefined){const body={label:$("#rName").value,keywords:$("#rKw").value,weight:+$("#rW").value};return roleCall(roleEdit?"PUT":"POST",roleEdit?`/api/roles/${roleEdit}`:"/api/roles",body)}
+});
+document.addEventListener("change",e=>{
+  const id=e.target.id;
+  if(id==="setRefresh"){const v=e.target.value;if(v==="custom"){$("#customWrap").hidden=false;$("#setCustom").focus()}else saveSetting({refresh_minutes:+v},$("#refErr"));return}
+  if(id==="setCustom"){return saveSetting({refresh_minutes:+e.target.value},$("#refErr"))}
+  if(id==="setDigest"||id==="setDigestTime"){return saveSetting({digest_enabled:$("#setDigest").checked,digest_time:$("#setDigestTime").value||"09:00"})}
+  if(e.target.dataset?.roleon){return roleCall("PUT",`/api/roles/${e.target.dataset.roleon}`,{enabled:e.target.checked})}
+});
+document.addEventListener("change",e=>{
+  if(e.target.matches("[data-sel]"))return setStatus(+e.target.closest(".card").dataset.id,e.target.value);
+  if(e.target.id==="fRemote"){S.remote=e.target.checked;change()}
+  if(e.target.id==="fRisk"){S.hideRisk=e.target.checked;change()}
+  if(e.target.id==="fGeo"){S.hideGeo=e.target.checked;change()}
+  if(e.target.id==="fVisa"){S.visa=e.target.checked;change()}
+});
+document.addEventListener("keydown",e=>{
+  if(e.target.matches?.("[data-src]")&&(e.key==="Enter"||e.key===" ")){e.preventDefault();return e.target.click()}
+  const typing=/INPUT|SELECT|TEXTAREA/.test(document.activeElement.tagName);
+  if(e.key==="Escape"){$("#modal").classList.remove("show");$("#settings").classList.remove("show");document.body.classList.remove("drawer");closeDetail();if(typing)document.activeElement.blur();return}
+  if(typing||e.metaKey||e.ctrlKey||e.altKey)return;
+  const idx=view.findIndex(j=>j.id===sel),cur=view[idx];
+  const move=n=>{const j=view[Math.max(0,Math.min(view.length-1,(idx<0?(n>0?-1:view.length):idx)+n))];if(j){if(view.indexOf(j)>=limit){limit=view.indexOf(j)+PAGE;renderList()}setSel(j.id)}};
+  switch(e.key){
+    case"/":e.preventDefault();$("#q").focus();break;
+    case"j":move(1);break;case"k":move(-1);break;
+    case"s":if(cur)setStatus(cur.id,cur.status==="interested"?"new":"interested");break;
+    case"a":if(cur)setStatus(cur.id,"applied");break;
+    case"x":if(cur){const nxt=view[idx+1]||view[idx-1];setStatus(cur.id,"ignored").then(()=>nxt&&setSel(nxt.id))}break;
+    case"o":if(cur){const u=(cur.sources.find(s=>s.url)||{}).url||cur.contacts.links[0];if(u)window.open(u.startsWith("http")?u:"https://"+u,"_blank","noopener")}break;
+    case"Enter":if(cur)openDetail(cur.id);break;
+    case"r":refresh();break;
+    case"b":toggleSide();break;
+    case"?":$("#modal").classList.add("show");break;
+  }
+});
+$("#q").oninput=e=>{S.q=e.target.value;change()};
+$("#refresh").onclick=refresh;
+$("#sideToggle").onclick=toggleSide;
+$("#settingsBtn").onclick=openSettings;
+$("#settings").onclick=e=>{if(e.target.id==="settings")$("#settings").classList.remove("show")};
+$("#help").onclick=()=>$("#modal").classList.add("show");
+$("#modal").onclick=e=>{if(e.target.id==="modal")$("#modal").classList.remove("show")};
+$("#dense").onclick=()=>{S.dense=!S.dense;save();renderTabs()};
+$("#theme").onclick=()=>{S.theme={auto:"light",light:"dark",dark:"auto"}[S.theme];applyTheme();save();toast("主题："+{auto:"跟随系统",light:"浅色",dark:"深色"}[S.theme])};
+$("#openSide").onclick=()=>document.body.classList.add("drawer");
+$("#scrim").onclick=()=>document.body.classList.remove("drawer");
+$("#dscrim").onclick=closeDetail;
+new IntersectionObserver(es=>{if(es[0].isIntersecting&&loaded&&view.length>limit){limit+=PAGE;renderList()}},{rootMargin:"600px"}).observe($("#sentinel"));
+$("#q").value=S.q;applyTheme();applySide();renderTabs();renderList();renderDetail();
+load().catch(()=>{loaded=true;$("#list").innerHTML='<div class="empty"><b>加载失败</b>看板服务没有响应，请确认 jobboard serve 仍在运行。</div>'});
+setInterval(()=>fetch("/api/sync").then(r=>r.json()).then(setSync).catch(()=>{}),60000);
+</script>
+</body></html>

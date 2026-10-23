@@ -1,0 +1,15 @@
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+*.egg-info/
+uv.lock
+site/
+state/
+*.db
+*.session
+*.session-journal
+.env
+config.json
+# a private planning note, not part of the published project
+docs/github-hosting-plan.md
