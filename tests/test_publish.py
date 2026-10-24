@@ -96,3 +96,26 @@ def test_source_kinds_and_new_badge_on_the_public_site(isolated, tmp_path):
     j = json.loads((tmp_path / "site/data/jobs.json").read_text())["jobs"][0]
     assert j["sources"][0]["kind"] == "gov"
     assert j["first_seen"] == j["posted_at"]            # 9 days old: must not show as "new today"
+
+
+@pytest.mark.parametrize("text,expected", [
+    ("Remote, US only", "restricted"), ("Candidates must be located in the United States", "restricted"),
+    ("must be based in the UK", "restricted"), ("You must be authorized to work in the US", "restricted"),
+    ("EU-based residents only", "restricted"), ("Remote, EU time zones", "restricted"), ("仅限美国居民", "restricted"),
+    ("Fully remote, work from anywhere", "unknown"), ("We are a US company hiring worldwide", "unknown"),
+    ("Our office in Europe, remote friendly", "unknown"), ("", "unknown")])
+def test_region_restriction_is_read_from_the_text(text, expected):
+    assert parse.geo_from_text(text) == expected
+
+
+def test_geo_from_text_reaches_export_and_new_jobs(isolated, tmp_path):
+    from jobboard.sources import run
+    item = {"id": 1, "url": "https://x/1", "title": "Flutter Developer", "company": "Acme", "location": "", "tags": [], "salary": None,
+            "text": "Fully remote but US only.", "date": datetime.now(timezone.utc).isoformat(), "remote": True}
+    a, t, s = run.to_job(item, "RemoteOK", -1)
+    assert a["geo"] == "restricted"
+    db.upsert(isolated, a, t, s)
+    isolated.execute("UPDATE jobs SET geo='unknown'")          # an old row stored before this rule existed
+    isolated.commit()
+    publish.export(isolated, tmp_path / "site")
+    assert json.loads((tmp_path / "site/data/jobs.json").read_text())["jobs"][0]["geo"] == "restricted"

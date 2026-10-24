@@ -68,6 +68,13 @@ France Travail needs a free OAuth client and is not wired up yet; UK "Find a job
 or the source says so officially (Canada LMIA); `maybe` = only relocation support. An explicit refusal ("no visa
 sponsorship", "must have the right to work") always wins. It is a text heuristic - always confirm with the employer.
 
+## Global remote filter
+The sidebar switch **🌍 只看全球远程** keeps only jobs that are remote, not restricted to a region and not tied to a city.
+"Restricted" is read from the location field *and* from the text ("US only", "must be located in the UK", "authorized to
+work in the US", "仅限美国" ...). Jobs with no location at all (most Telegram/HN posts) count as global unless their text
+says otherwise. Run `jobboard reanalyze` once to apply the text rule to jobs stored earlier (the board and the public export
+also apply it on the fly).
+
 ## Public site (GitHub Pages)
 `.github/workflows/update.yml` runs every hour (best effort: GitHub may delay scheduled runs) and on demand:
 `fetch --mode public` -> `export` -> Pages. State lives on the orphan `data` branch (one commit, replaced each run).

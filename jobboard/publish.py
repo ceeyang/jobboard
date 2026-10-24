@@ -8,7 +8,7 @@ import shutil
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
-from jobboard import db, mode, roles
+from jobboard import db, mode, parse, roles
 
 WINDOW_DAYS, EXCERPT = 45, 600
 ROOT = Path(__file__).parent
@@ -72,7 +72,7 @@ def job_to_public(r) -> dict | None:
     if not sources:
         return None
     return {"id": numeric_id(r["fingerprint"]), "title": redact(r["title"]), "company": redact(r["company"]),
-            "location": r["location"], "geo": r["geo"] or "unknown", "salary": r["salary"], "remote": bool(r["remote"]),
+            "location": r["location"], "geo": r["geo"] if r["geo"] not in (None, "", "unknown") else parse.geo_from_text(r["text"]), "salary": r["salary"], "remote": bool(r["remote"]),
             "score": r["score"], "tags": json.loads(r["tags"]), "risks": json.loads(r["risks"]), "visa": r["visa"] or "",
             "posted_at": r["posted_at"], "first_seen": _first_seen(r), "status": "new", "text": excerpt(r["text"]),
             "contacts": {"telegram": [], "email": [], "links": _public_links(sources)},

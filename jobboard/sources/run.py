@@ -18,6 +18,8 @@ def to_job(item: dict, name: str, site_id: int) -> tuple[dict, str, dict]:
     a["company"] = (item.get("company") or "").strip() or None
     a["location"] = (item.get("location") or "").strip() or None
     a["geo"] = parse.geo_flag(item.get("location"))
+    if a["geo"] == "unknown":
+        a["geo"] = parse.geo_from_text(text)    # "US only" written in the description
     a["remote"] = bool(item.get("remote"))
     a["salary"] = item.get("salary") or None  # never regex salary out of prose ("10-50 employees")
     a["contacts"]["links"] = list(dict.fromkeys([item["url"]] + a["contacts"]["links"]))[:5]

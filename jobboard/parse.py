@@ -162,6 +162,22 @@ def geo_flag(location: str | None) -> str:
     return "restricted" if _RESTRICT.search(loc) else "unknown"
 
 
+_REGION = (r"(?:us|usa|u\.s\.a?\.?|united states|america|uk|u\.k\.|united kingdom|canada|europe|european union|eu|emea|germany|"
+           r"india|brazil|latam|latin america|north america|australia)")
+_RESTRICT_TEXT = re.compile(
+    rf"\b{_REGION}[ \-]+(?:only|based|residents?|citizens?|time ?zones?)\b"
+    rf"|\b(?:only|exclusively)\s+(?:for\s+|to\s+)?(?:candidates\s+|applicants\s+)?(?:in|from|based in|located in)\s+(?:the\s+)?{_REGION}\b"
+    rf"|\b(?:must|need to|have to|should)\s+(?:currently\s+)?(?:be\s+)?(?:located|based|reside|resident|living|live)\s+(?:in|within)\s+(?:the\s+)?{_REGION}\b"
+    rf"|\b(?:authori[sz]ed|eligible|legally entitled|right)\s+to\s+work\s+in\s+(?:the\s+)?{_REGION}\b"
+    r"|仅限(?:美国|欧洲|欧美|国内|大陆|境内|北美)|限(?:美国|欧美|国内|大陆)|只招(?:美国|欧洲|国内)|需(?:在|位于)(?:美国|欧洲|国内)", re.I)
+
+
+def geo_from_text(text: str | None) -> str:
+    """For postings without a location field (Telegram, HN, ATS free text): 'restricted' when the text itself says
+    "US only", "must be located in the UK", "authorized to work in the US" ...; otherwise 'unknown'."""
+    return "restricted" if text and _RESTRICT_TEXT.search(text) else "unknown"
+
+
 def analyze(text: str, hint: str = "", structured: bool = False) -> dict:
     score, tags = role_match(text, hint, structured)
     return {

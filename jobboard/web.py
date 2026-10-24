@@ -10,7 +10,7 @@ from pathlib import Path
 from fastapi import Body, FastAPI, HTTPException
 from fastapi.responses import HTMLResponse
 
-from jobboard import db, links, mode, roles, scheduler
+from jobboard import db, links, mode, parse, roles, scheduler
 
 
 @asynccontextmanager
@@ -31,6 +31,8 @@ def _decode(r, usernames: dict | None = None) -> dict:
     d = dict(r)
     for k in ("tags", "risks", "contacts", "sources"):
         d[k] = json.loads(d[k])
+    if (d.get("geo") or "unknown") == "unknown":   # location field empty (Telegram, HN ...): maybe the text says "US only"
+        d["geo"] = parse.geo_from_text(d.get("text"))
     for s in d["sources"]:
         u = (usernames or {}).get(s["chat_id"])
         s["url"] = s.get("url") or links.post_url(s["chat_id"], u, s["msg_id"])  # job sites carry their own URL

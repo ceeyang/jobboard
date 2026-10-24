@@ -236,7 +236,7 @@ pre{white-space:pre-wrap;word-break:break-word;font:inherit;background:var(--pan
   <div class="sec">条件</div>
   <label class="switch">仅远程<input type="checkbox" id="fRemote"></label>
   <label class="switch" title="隐藏标注了「不收个人信息」「博彩」等风险的岗位">隐藏有风险提示<input type="checkbox" id="fRisk"></label>
-  <label class="switch" title="隐藏标明「仅限某地区居民」的远程岗位（本地驻场岗位不受影响）">隐藏限地区远程岗位<input type="checkbox" id="fGeo"></label>
+  <label class="switch" title="只显示远程岗位，并去掉标明「仅限美国 / 仅限欧洲 / US only / 必须位于某国」等限制居住地的岗位。没写限制的算全球可申请；地点写了具体城市的不算">🌍 只看全球远程<input type="checkbox" id="fGeo"></label>
   <label class="switch" title="岗位写明雇主可办理签证担保（或官方标明，如加拿大 LMIA）；明确写“不提供担保”的不算">只看雇主担保签证<input type="checkbox" id="fVisa"></label>
 
   <div class="sec">常用搜索</div>
@@ -348,6 +348,8 @@ function parseQuery(q){   // space = AND, a|b = OR, -term = exclude, "exact phra
   _pq={q,v:{must,not}};return _pq.v;
 }
 const hay=j=>j._hay??(j._hay=(j.title+" "+(j.company||"")+" "+j.text+" "+j.sources.map(x=>x.chat).join(" ")+" "+JSON.stringify(j.contacts)).toLowerCase());
+// "global remote": remote, not restricted to a region, and not tied to a city ("Remote", "Anywhere", or no location at all)
+const globalRemote=j=>j.remote&&j.geo!=="restricted"&&(j.geo==="worldwide"||!j.location||/^\s*(remote|anywhere|worldwide|global|distributed|work from anywhere)\b/i.test(j.location));
 function match(j,s,skip){
   if(j.score<s.min)return false;
   if(s.since&&(j._t??=utc(j.posted_at).getTime())<Date.now()-SINCE_MS[s.since])return false;
@@ -356,7 +358,7 @@ function match(j,s,skip){
   if(skip!=="srcs"&&s.srcs.length&&!j.sources.some(x=>has(s.srcs,x.chat)))return false;
   if(s.remote&&!j.remote)return false;
   if(s.hideRisk&&j.risks.length)return false;
-  if(s.hideGeo&&j.geo==="restricted"&&j.remote)return false;
+  if(s.hideGeo&&!globalRemote(j))return false;
   if(s.visa&&j.visa!=="yes")return false;
   const q=s.q.trim();
   if(q){const {must,not}=parseQuery(q),h=hay(j);
@@ -425,7 +427,7 @@ function renderActive(){
     if(names.length&&names.every(n=>has(S.srcs,n))){f.push(["grp:"+k,KIND_LABEL[k]+"（全部）"]);rest=rest.filter(n=>!names.includes(n))}
   }
   rest.forEach(r=>f.push(["src:"+r,r.length>14?r.slice(0,13)+"…":r]));
-  if(S.remote)f.push(["remote","仅远程"]);if(S.hideRisk)f.push(["risk","隐藏风险"]);if(S.hideGeo)f.push(["geo","隐藏限地区"]);if(S.visa)f.push(["visa","担保签证"]);
+  if(S.remote)f.push(["remote","仅远程"]);if(S.hideRisk)f.push(["risk","隐藏风险"]);if(S.hideGeo)f.push(["geo","全球远程"]);if(S.visa)f.push(["visa","担保签证"]);
   $("#active").innerHTML=f.map(([k,t])=>`<button class="af" data-rm="${esc(k)}" aria-label="移除筛选 ${esc(t)}">${esc(t)} <span>✕</span></button>`).join("")+(f.length>1?`<button class="clear" data-clearall>清除全部</button>`:"");
 }
 function actionsHtml(j){
