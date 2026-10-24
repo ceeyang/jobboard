@@ -59,6 +59,9 @@ def main(argv=None):
                         out["discover"] = discover_run(con, ("db", "seed") if empty else ("db",))
                     except Exception as exc:  # discovery is a bonus, never a reason to skip the fetch
                         out["discover"] = {"error": f"{type(exc).__name__}: {exc}"[:160]}
+                if public and not a.only:   # public channels listed in config/telegram_channels.txt, via their web preview
+                    from jobboard.sources import telegram_public
+                    out["telegram_public"] = telegram_public.run(db.connect())
                 out["web"] = web.run(only=set(a.only.split(",")) if a.only else None, force=a.force,
                                      mode="public" if public else None)
                 if public:   # the database itself is committed to a public branch: keep only excerpts + links in it

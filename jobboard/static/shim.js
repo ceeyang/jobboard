@@ -39,6 +39,9 @@
     const anchor = document.querySelector("#stats");
     anchor?.parentNode.insertBefore(box, anchor);
   });
+  try {   // first visit: show the Telegram channel group expanded (the page folds it by default)
+    if (!localStorage.getItem("jb2")) localStorage.setItem("jb2", JSON.stringify({ closed: { telegram: false } }));
+  } catch (e) {}
   const settings = () => ({ refresh_minutes: 60, digest_enabled: false, digest_time: "09:00", saved_searches: read(KQ, []),
                             next_fetch_at: null, min_refresh: 5, readonly: true });
 

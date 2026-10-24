@@ -72,7 +72,11 @@ sponsorship", "must have the right to work") always wins. It is a text heuristic
 `.github/workflows/update.yml` runs every hour (best effort: GitHub may delay scheduled runs) and on demand:
 `fetch --mode public` -> `export` -> Pages. State lives on the orphan `data` branch (one commit, replaced each run).
 - **Reduced edition on purpose.** Only whitelisted sources (`jobboard/mode.py`): remote job boards, HN, employers' own ATS boards,
-  Sweden, EURES. Never Telegram, LinkedIn, Adzuna/USAJOBS, Germany, Canada, The Muse, Arbeitnow.
+  Sweden, EURES, and the public Telegram channels listed in `config/telegram_channels.txt`. Never LinkedIn, Adzuna/USAJOBS,
+  Germany, Canada, The Muse, Arbeitnow, and never anything read with your personal Telegram login.
+- **Telegram on the public site** is read through each channel's public web preview (`https://t.me/s/<name>`, no login), so only
+  channels with a preview work; private groups and invite-only groups are skipped automatically and reported in the run
+  summary. Edit the list in `config/telegram_channels.txt` (it is public, together with the repository).
 - **Excerpt + link only.** Per job: title, company, location, salary, a <=600 character excerpt and the link to the original.
   No contact handles/e-mails (a final check fails the build if one slips through), no full texts, no notes.
 - **Read-only.** Statuses (interested/applied/...) and saved searches live in *your browser* only. Roles, refresh and digest

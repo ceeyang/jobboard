@@ -63,7 +63,8 @@ def scrub_db(con) -> int:
 
 def public_sources(sources: list[dict]) -> list[dict]:
     """Only sources allowed on the public site: never Telegram, LinkedIn, keyed APIs ... (see mode.py)."""
-    return [s for s in sources if not is_telegram(s["chat_id"]) and s.get("url") and mode.allowed(s["chat"], "public")]
+    return [s for s in sources if s.get("url") and (mode.is_public_telegram_source(s) if is_telegram(s["chat_id"])
+                                                    else mode.allowed(s["chat"], "public"))]
 
 
 def job_to_public(r) -> dict | None:
@@ -94,7 +95,17 @@ def export(con, out: str | Path, now: datetime | None = None, window_days: int =
     if leaks:
         raise RuntimeError(f"refusing to publish: contact data found in export ({leaks[0]!r})")
     (out / "data/jobs.json").write_text(blob, encoding="utf-8")
-    (out / "data/channels.json").write_text('{"chats": []}', encoding="utf-8")
+    counts: dict[int, int] = {}
+    for j in jobs:
+        if j["score"] >= 5:
+            for cid in {s["chat_id"] for s in j["sources"] if s["kind"] == "telegram"}:
+                counts[cid] = counts.get(cid, 0) + 1
+    listed = set(mode.public_telegram_channels())
+    chats = [{"chat_id": r["chat_id"], "title": r["title"] or r["username"], "username": r["username"],
+              "url": f"https://t.me/{r['username']}", "jobs": counts.get(r["chat_id"], 0)}
+             for r in con.execute("SELECT chat_id, username, title FROM chats") if (r["username"] or "").lower() in listed]
+    chats.sort(key=lambda c: (-c["jobs"], c["title"]))
+    (out / "data/channels.json").write_text(json.dumps({"chats": chats}, ensure_ascii=False), encoding="utf-8")
     (out / "data/roles.json").write_text(json.dumps({"roles": roles.list_roles(con)}, ensure_ascii=False), encoding="utf-8")
     state = [{"name": r["name"], "last_count": r["last_count"], "ok": not r["last_error"], "error": (r["last_error"] or "")[:120]}
              for r in con.execute("SELECT name, last_count, last_error FROM source_state ORDER BY name")]

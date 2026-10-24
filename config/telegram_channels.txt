@@ -1,0 +1,35 @@
+# Public Telegram channels shown on the public site (one username per line, # = comment).
+# They are read through https://t.me/s/<name>; channels without a web preview are skipped automatically.
+# Only these channels may ever appear on the public site; posts are shown as excerpt + link back, contacts removed.
+
+# --- subscribed locally
+abetterpathxyz
+aerfahc1
+bnzpgf
+cqm78
+cryptojobslist
+dejob_official
+dejob_talent
+dongnanya_jobs
+ferm_yiyi
+haiwaiit
+itjobsing
+jobyiqi888
+nextech666
+recruitingremotefreelancers
+shuangxiugognzuo
+technologypositions
+tsukikeji
+warming111
+web3hiring
+yuanchenggongzuozhipin
+
+# --- found 2026-10-24 (verified: web preview on, posted within the last 10 days)
+remote_cn
+remotejobss
+remoteit
+relocateme
+dejob_global
+laborx
+remoteweb3jobs
+game_dev_jobs
