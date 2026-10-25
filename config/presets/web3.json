@@ -1,0 +1,66 @@
+{
+ "name": "web3",
+ "site": {
+  "title": "Web3 / 区块链岗位看板",
+  "description": "智能合约、区块链、DeFi、Web3 岗位，每几小时自动汇总。"
+ },
+ "roles": [
+  {
+   "key": "web3",
+   "label": "Web3 / 区块链",
+   "keywords": [
+    "web3",
+    "blockchain",
+    "区块链",
+    "defi",
+    "crypto",
+    "dapp",
+    "nft"
+   ],
+   "weight": 8
+  },
+  {
+   "key": "solidity",
+   "label": "智能合约",
+   "keywords": [
+    "solidity",
+    "smart contract",
+    "智能合约",
+    "move language",
+    "anchor"
+   ],
+   "weight": 9
+  }
+ ],
+ "specific_roles": [
+  "web3",
+  "solidity"
+ ],
+ "generic_title": "engineer|developer|programmer|engineering|\\bswe\\b|software|开发|工程师",
+ "exclude_title": [
+  "designer",
+  "\\bqa\\b",
+  "sales",
+  "marketing",
+  "recruit",
+  "customer",
+  "account (?:executive|manager)",
+  "accountant",
+  "finance",
+  "legal",
+  "writer",
+  "content (?:manager|creator|strategist)",
+  "\\bhr\\b",
+  "human resources",
+  "销售",
+  "市场",
+  "运营",
+  "财务",
+  "行政",
+  "客服",
+  "商务"
+ ],
+ "stack_mismatch": [],
+ "stack_safe_roles": [],
+ "stack_safe_title": ""
+}

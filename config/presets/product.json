@@ -1,0 +1,54 @@
+{
+ "name": "product",
+ "site": {
+  "title": "产品经理岗位看板",
+  "description": "产品经理、产品负责人岗位，每几小时自动汇总。"
+ },
+ "roles": [
+  {
+   "key": "pm",
+   "label": "产品经理",
+   "keywords": [
+    "product manager",
+    "product owner",
+    "产品经理",
+    "产品负责人",
+    "group product",
+    "technical product"
+   ],
+   "weight": 9
+  }
+ ],
+ "specific_roles": [
+  "pm"
+ ],
+ "generic_title": "manager|owner|product|产品",
+ "exclude_title": [
+  "engineer",
+  "developer",
+  "designer",
+  "sales",
+  "sales",
+  "marketing",
+  "recruit",
+  "customer",
+  "account (?:executive|manager)",
+  "accountant",
+  "finance",
+  "legal",
+  "writer",
+  "content (?:manager|creator|strategist)",
+  "\\bhr\\b",
+  "human resources",
+  "销售",
+  "市场",
+  "运营",
+  "财务",
+  "行政",
+  "客服",
+  "商务"
+ ],
+ "stack_mismatch": [],
+ "stack_safe_roles": [],
+ "stack_safe_title": ""
+}

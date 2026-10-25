@@ -64,8 +64,14 @@ def validate(label: str, keywords: str, weight) -> tuple[str, str, int]:
 def search_terms(con, limit: int = 6) -> list[str]:
     """Keywords for sources that need a search query (LinkedIn, Adzuna, USAJOBS): the first two ASCII keywords of
     each enabled role, heaviest role first. Short/CJK keywords are useless as an outside search."""
+    from jobboard import profile_config
+    cfg = profile_config.current()
+    rows = ([{**r, "keywords": ", ".join(r["keywords"]), "enabled": 1} for r in cfg["roles"]] if cfg
+            else [r for r in list_roles(con) if r["enabled"]])
+    if cfg:
+        limit = max(limit, cfg.get("search_terms", 6))
     out: list[str] = []
-    for r in sorted((r for r in list_roles(con) if r["enabled"]), key=lambda r: -r["weight"]):
+    for r in sorted(rows, key=lambda r: -r["weight"]):
         taken = 0
         for k in split_keywords(r["keywords"]):
             if _ASCII_WORD.fullmatch(k) and len(k) >= 3 and k.lower() not in {x.lower() for x in out}:

@@ -31,6 +31,11 @@ NEG_TITLE = (r"back-?end|data (?:engineer|scientist|analyst)|devops|\bsre\b|site
 STACK_MISMATCH = r"\.net|\bc#|\bjava\b|\bphp\b|python|ruby|golang|\bgo\b|\brust\b|elixir|solidity|scala|\bc\+\+"
 
 
+# A title that names another stack is capped (STACK_MISMATCH) unless it also names one of "your" roles / words.
+STACK_SAFE_ROLES = {"flutter", "ios", "android", "mobile"}
+STACK_SAFE_TITLE = r"react|vue|typescript|node|front-?end"
+
+
 # Runtime override: the web app / CLI load the user's roles from the database (see roles.py).
 _active: list | None = None
 

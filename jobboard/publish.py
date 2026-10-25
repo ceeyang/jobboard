@@ -2,13 +2,14 @@
 What is published: title, company, location, salary, tags, a <=600 character excerpt and the links back to the
 original posting. What is never published: contact handles/e-mails, full texts, your statuses and notes, anything from
 Telegram. A final self-check fails the build if an e-mail or @handle is still present."""
+import html
 import json
 import re
 import shutil
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
-from jobboard import db, mode, parse, roles
+from jobboard import db, mode, parse, profile_config, roles
 
 WINDOW_DAYS, EXCERPT = 45, 600
 ROOT = Path(__file__).parent
@@ -107,14 +108,20 @@ def export(con, out: str | Path, now: datetime | None = None, window_days: int =
              for r in con.execute("SELECT chat_id, username, title FROM chats") if (r["username"] or "").lower() in listed]
     chats.sort(key=lambda c: (-c["jobs"], c["title"]))
     (out / "data/channels.json").write_text(json.dumps({"chats": chats}, ensure_ascii=False), encoding="utf-8")
-    (out / "data/roles.json").write_text(json.dumps({"roles": roles.list_roles(con)}, ensure_ascii=False), encoding="utf-8")
+    cfg = profile_config.current()
+    chips = profile_config.roles_for_ui(cfg) if cfg else roles.list_roles(con)     # the profile decides which role buttons exist
+    (out / "data/roles.json").write_text(json.dumps({"roles": chips}, ensure_ascii=False), encoding="utf-8")
     state = [{"name": r["name"], "last_count": r["last_count"], "ok": not r["last_error"], "error": (r["last_error"] or "")[:120]}
              for r in con.execute("SELECT name, last_count, last_error FROM source_state ORDER BY name")]
-    meta = {"generated_at": now.isoformat(), "jobs": len(jobs), "window_days": window_days, "sources": state}
+    site = (cfg or {}).get("site") or {"title": "岗位看板", "description": ""}
+    meta = {"generated_at": now.isoformat(), "jobs": len(jobs), "window_days": window_days, "sources": state, "site": site}
     (out / "data/meta.json").write_text(json.dumps(meta, ensure_ascii=False), encoding="utf-8")
     page = (ROOT / "templates/app.html").read_text(encoding="utf-8")
     page = page.replace("<script>\nconst STATUS=", '<script src="shim.js"></script>\n<script>\nconst STATUS=', 1)
     page = page.replace("function nextRunText(m,next){", "function nextRunText(m,next){if(window.JB_STATIC)return window.JB_STATIC.label();", 1)
+    title_html = html.escape(site["title"])
+    page = page.replace("<title>岗位看板</title>", f"<title>{title_html}</title>", 1)
+    page = page.replace('<span class="bname">岗位看板</span>', f'<span class="bname">{title_html}</span>', 1)
     if 'src="shim.js"' not in page or "JB_STATIC" not in page:
         raise RuntimeError("app.html changed: the static-site patch points no longer match")
     (out / "index.html").write_text(page, encoding="utf-8")

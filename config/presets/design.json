@@ -1,0 +1,66 @@
+{
+ "name": "design",
+ "site": {
+  "title": "设计岗位看板",
+  "description": "UI / UX、产品设计、设计系统岗位，每几小时自动汇总。"
+ },
+ "roles": [
+  {
+   "key": "design",
+   "label": "设计",
+   "keywords": [
+    "ui designer",
+    "ux designer",
+    "product designer",
+    "ui/ux",
+    "ux researcher",
+    "interaction designer",
+    "设计师",
+    "体验设计"
+   ],
+   "weight": 9
+  },
+  {
+   "key": "design-sys",
+   "label": "设计系统 / 动效",
+   "keywords": [
+    "design system",
+    "motion designer",
+    "设计系统",
+    "动效"
+   ],
+   "weight": 7
+  }
+ ],
+ "specific_roles": [
+  "design"
+ ],
+ "generic_title": "designer|design|设计",
+ "exclude_title": [
+  "engineer",
+  "developer",
+  "sales",
+  "sales",
+  "marketing",
+  "recruit",
+  "customer",
+  "account (?:executive|manager)",
+  "accountant",
+  "finance",
+  "legal",
+  "writer",
+  "content (?:manager|creator|strategist)",
+  "\\bhr\\b",
+  "human resources",
+  "销售",
+  "市场",
+  "运营",
+  "财务",
+  "行政",
+  "客服",
+  "商务"
+ ],
+ "stack_mismatch": [],
+ "stack_safe_roles": [],
+ "stack_safe_title": ""
+}

@@ -17,7 +17,7 @@
     label() {
       if (!generated) return "公开站点 · 正在加载…";
       const h = Math.max(0, Math.round((Date.now() - new Date(generated)) / 36e5));
-      return `GitHub Actions 每小时更新 · ${h < 1 ? "刚刚更新" : h + " 小时前更新"}`;
+      return `${h < 1 ? "刚刚更新" : h + " 小时前更新"} · 自动更新（GitHub 定时不保证准点）`;
     },
   };
   // Read-only edition: no manual refresh / settings (data is rebuilt hourly), and a short, dismissible explanation.
@@ -32,12 +32,16 @@
     if (read("jb-pub-intro", false)) return;
     const box = document.createElement("div");
     box.className = "intro";
-    box.innerHTML = "<div><b>公开版岗位看板</b>：每小时自动汇总远程招聘站、企业招聘页，以及瑞典、欧盟 EURES 的政府就业服务。" +
-      "这里只显示摘要和<b>原帖链接</b>，申请请点开原帖。想找<b>雇主担保签证</b>的岗位，打开左侧「只看雇主担保签证」" +
-      "（根据岗位正文判断，申请前请向雇主确认）。感兴趣/已投等标记只保存在你当前的浏览器里。</div><button>知道了</button>";
-    box.querySelector("button").onclick = () => { write("jb-pub-intro", true); box.remove(); };
-    const anchor = document.querySelector("#stats");
-    anchor?.parentNode.insertBefore(box, anchor);
+    const show = (site) => {
+      box.innerHTML = `<div><b>${site.title}</b>：${site.description || "公开岗位的聚合看板。"}` +
+        "这里只显示摘要和<b>原帖链接</b>，申请请点开原帖。数据由 GitHub Actions <b>自动更新</b>，但 GitHub 的定时触发<b>并不准点</b>" +
+        "（实测通常每 2–6 小时一次），页面右上角会显示上次更新时间。想找<b>雇主担保签证</b>的岗位，打开左侧「只看雇主担保签证」" +
+        "（根据岗位正文判断，申请前请向雇主确认）。感兴趣/已投等标记只保存在你当前的浏览器里。</div><button>知道了</button>";
+      box.querySelector("button").onclick = () => { write("jb-pub-intro", true); box.remove(); };
+      const anchor = document.querySelector("#stats");
+      anchor?.parentNode.insertBefore(box, anchor);
+    };
+    data("meta").then(m => show(m.site || { title: "公开版岗位看板", description: "" })).catch(() => show({ title: "公开版岗位看板", description: "" }));
   });
   try {   // first visit: show the Telegram channel group expanded (the page folds it by default)
     if (!localStorage.getItem("jb2")) localStorage.setItem("jb2", JSON.stringify({ closed: { telegram: false } }));
@@ -78,7 +82,7 @@
       return reply({ id: +s[1], status });
     }
     if (method === "POST" && path === "refresh")
-      return reply({ started: false, reason: "数据由 GitHub Actions 每小时自动更新，无需手动刷新" });
+      return reply({ started: false, reason: "数据由 GitHub Actions 自动更新（定时不保证准点），无需手动刷新" });
     return reply({ detail: READONLY }, 400);   // role edits and everything else
   };
 })();

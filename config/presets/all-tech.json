@@ -1,0 +1,591 @@
+{
+ "name": "all-tech",
+ "site": {
+  "title": "技术岗位聚合看板",
+  "description": "前端、移动端、后端、数据 / AI、运维、测试、安全、Web3、游戏、产品、设计、技术管理，每几小时自动汇总。"
+ },
+ "roles": [
+  {
+   "key": "frontend",
+   "label": "前端",
+   "keywords": [
+    "前端",
+    "front-end",
+    "frontend",
+    "front end",
+    "web developer",
+    "ui engineer",
+    "h5",
+    "小程序"
+   ],
+   "weight": 9
+  },
+  {
+   "key": "react",
+   "label": "React",
+   "keywords": [
+    "react",
+    "next.js",
+    "nextjs",
+    "redux"
+   ],
+   "weight": 8
+  },
+  {
+   "key": "vue",
+   "label": "Vue",
+   "keywords": [
+    "vue",
+    "nuxt"
+   ],
+   "weight": 8
+  },
+  {
+   "key": "angular",
+   "label": "Angular",
+   "keywords": [
+    "angular"
+   ],
+   "weight": 8
+  },
+  {
+   "key": "typescript",
+   "label": "TypeScript / JS",
+   "keywords": [
+    "typescript",
+    "javascript"
+   ],
+   "weight": 6
+  },
+  {
+   "key": "flutter",
+   "label": "Flutter",
+   "keywords": [
+    "flutter",
+    "dart"
+   ],
+   "weight": 10
+  },
+  {
+   "key": "ios",
+   "label": "iOS",
+   "keywords": [
+    "ios",
+    "swift",
+    "swiftui",
+    "objective-c",
+    "iphone"
+   ],
+   "weight": 9
+  },
+  {
+   "key": "android",
+   "label": "Android",
+   "keywords": [
+    "android",
+    "kotlin",
+    "jetpack compose"
+   ],
+   "weight": 9
+  },
+  {
+   "key": "rn",
+   "label": "React Native",
+   "keywords": [
+    "react native",
+    "expo"
+   ],
+   "weight": 8
+  },
+  {
+   "key": "harmony",
+   "label": "鸿蒙",
+   "keywords": [
+    "鸿蒙",
+    "harmonyos",
+    "arkts",
+    "openharmony"
+   ],
+   "weight": 8
+  },
+  {
+   "key": "mobile",
+   "label": "移动端",
+   "keywords": [
+    "mobile",
+    "移动端",
+    "客户端",
+    "app开发",
+    "app 开发",
+    "跨端",
+    "跨平台"
+   ],
+   "weight": 7
+  },
+  {
+   "key": "fullstack",
+   "label": "全栈",
+   "keywords": [
+    "全栈",
+    "full-stack",
+    "fullstack",
+    "full stack"
+   ],
+   "weight": 9
+  },
+  {
+   "key": "node",
+   "label": "Node.js",
+   "keywords": [
+    "node.js",
+    "nodejs",
+    "nestjs",
+    "express"
+   ],
+   "weight": 6
+  },
+  {
+   "key": "web",
+   "label": "Web",
+   "keywords": [
+    "web developer",
+    "web 开发",
+    "web开发"
+   ],
+   "weight": 5
+  },
+  {
+   "key": "backend",
+   "label": "后端",
+   "keywords": [
+    "后端",
+    "服务端",
+    "back-end",
+    "backend",
+    "back end",
+    "server-side",
+    "distributed systems",
+    "microservices",
+    "api engineer"
+   ],
+   "weight": 9
+  },
+  {
+   "key": "java",
+   "label": "Java",
+   "keywords": [
+    "java",
+    "spring",
+    "springboot",
+    "spring boot"
+   ],
+   "weight": 8
+  },
+  {
+   "key": "go",
+   "label": "Go",
+   "keywords": [
+    "golang",
+    "go developer",
+    "go engineer",
+    "go 开发",
+    "go语言"
+   ],
+   "weight": 8
+  },
+  {
+   "key": "python",
+   "label": "Python",
+   "keywords": [
+    "python",
+    "django",
+    "fastapi",
+    "flask"
+   ],
+   "weight": 8
+  },
+  {
+   "key": "php",
+   "label": "PHP",
+   "keywords": [
+    "php",
+    "laravel"
+   ],
+   "weight": 7
+  },
+  {
+   "key": "dotnet",
+   "label": ".NET / C#",
+   "keywords": [
+    ".net",
+    "c#",
+    "asp.net"
+   ],
+   "weight": 7
+  },
+  {
+   "key": "rust",
+   "label": "Rust",
+   "keywords": [
+    "rust"
+   ],
+   "weight": 7
+  },
+  {
+   "key": "cpp",
+   "label": "C++",
+   "keywords": [
+    "c++"
+   ],
+   "weight": 6
+  },
+  {
+   "key": "ruby",
+   "label": "Ruby",
+   "keywords": [
+    "ruby",
+    "rails"
+   ],
+   "weight": 7
+  },
+  {
+   "key": "ml",
+   "label": "机器学习 / AI",
+   "keywords": [
+    "machine learning",
+    "ml engineer",
+    "ai engineer",
+    "deep learning",
+    "llm",
+    "nlp",
+    "computer vision",
+    "大模型",
+    "算法",
+    "机器学习",
+    "深度学习"
+   ],
+   "weight": 9
+  },
+  {
+   "key": "data-eng",
+   "label": "数据工程",
+   "keywords": [
+    "data engineer",
+    "数据工程",
+    "etl",
+    "data platform",
+    "spark",
+    "airflow",
+    "dbt"
+   ],
+   "weight": 8
+  },
+  {
+   "key": "data-sci",
+   "label": "数据科学",
+   "keywords": [
+    "data scientist",
+    "数据科学",
+    "数据挖掘"
+   ],
+   "weight": 8
+  },
+  {
+   "key": "data-analyst",
+   "label": "数据分析",
+   "keywords": [
+    "data analyst",
+    "数据分析",
+    "bi engineer",
+    "analytics engineer"
+   ],
+   "weight": 6
+  },
+  {
+   "key": "devops",
+   "label": "DevOps",
+   "keywords": [
+    "devops",
+    "运维",
+    "dev ops",
+    "ci/cd"
+   ],
+   "weight": 9
+  },
+  {
+   "key": "sre",
+   "label": "SRE",
+   "keywords": [
+    "sre",
+    "site reliability",
+    "可靠性"
+   ],
+   "weight": 9
+  },
+  {
+   "key": "platform",
+   "label": "平台 / 基础设施",
+   "keywords": [
+    "platform engineer",
+    "infrastructure",
+    "cloud engineer",
+    "kubernetes",
+    "k8s",
+    "terraform",
+    "云原生",
+    "基础设施"
+   ],
+   "weight": 8
+  },
+  {
+   "key": "qa",
+   "label": "QA / 测试",
+   "keywords": [
+    "qa",
+    "quality assurance",
+    "test engineer",
+    "tester",
+    "测试工程师",
+    "测试开发",
+    "质量保障"
+   ],
+   "weight": 9
+  },
+  {
+   "key": "sdet",
+   "label": "SDET / 自动化",
+   "keywords": [
+    "sdet",
+    "test automation",
+    "automation engineer",
+    "自动化测试"
+   ],
+   "weight": 9
+  },
+  {
+   "key": "security",
+   "label": "安全",
+   "keywords": [
+    "security engineer",
+    "appsec",
+    "application security",
+    "infosec",
+    "cybersecurity",
+    "安全工程师",
+    "安全研究"
+   ],
+   "weight": 9
+  },
+  {
+   "key": "pentest",
+   "label": "渗透 / 红队",
+   "keywords": [
+    "penetration test",
+    "pentest",
+    "red team",
+    "渗透",
+    "红队"
+   ],
+   "weight": 8
+  },
+  {
+   "key": "web3",
+   "label": "Web3 / 区块链",
+   "keywords": [
+    "web3",
+    "blockchain",
+    "区块链",
+    "defi",
+    "crypto",
+    "dapp",
+    "nft"
+   ],
+   "weight": 8
+  },
+  {
+   "key": "solidity",
+   "label": "智能合约",
+   "keywords": [
+    "solidity",
+    "smart contract",
+    "智能合约",
+    "move language",
+    "anchor"
+   ],
+   "weight": 9
+  },
+  {
+   "key": "unity",
+   "label": "Unity",
+   "keywords": [
+    "unity",
+    "unity3d"
+   ],
+   "weight": 9
+  },
+  {
+   "key": "unreal",
+   "label": "Unreal",
+   "keywords": [
+    "unreal",
+    "ue4",
+    "ue5"
+   ],
+   "weight": 9
+  },
+  {
+   "key": "game",
+   "label": "游戏开发",
+   "keywords": [
+    "game developer",
+    "game engineer",
+    "gameplay",
+    "游戏开发",
+    "游戏客户端",
+    "游戏服务端",
+    "cocos"
+   ],
+   "weight": 8
+  },
+  {
+   "key": "pm",
+   "label": "产品经理",
+   "keywords": [
+    "product manager",
+    "product owner",
+    "产品经理",
+    "产品负责人",
+    "group product",
+    "technical product"
+   ],
+   "weight": 9
+  },
+  {
+   "key": "design",
+   "label": "设计",
+   "keywords": [
+    "ui designer",
+    "ux designer",
+    "product designer",
+    "ui/ux",
+    "ux researcher",
+    "interaction designer",
+    "设计师",
+    "体验设计"
+   ],
+   "weight": 9
+  },
+  {
+   "key": "design-sys",
+   "label": "设计系统 / 动效",
+   "keywords": [
+    "design system",
+    "motion designer",
+    "设计系统",
+    "动效"
+   ],
+   "weight": 7
+  },
+  {
+   "key": "em",
+   "label": "工程经理",
+   "keywords": [
+    "engineering manager",
+    "engineering director",
+    "head of engineering",
+    "vp engineering",
+    "技术经理",
+    "研发经理",
+    "技术总监",
+    "研发总监"
+   ],
+   "weight": 9
+  },
+  {
+   "key": "lead",
+   "label": "Tech Lead",
+   "keywords": [
+    "tech lead",
+    "technical lead",
+    "staff engineer",
+    "principal engineer",
+    "架构师",
+    "technical architect",
+    "solutions architect"
+   ],
+   "weight": 8
+  }
+ ],
+ "specific_roles": [
+  "frontend",
+  "react",
+  "vue",
+  "angular",
+  "typescript",
+  "flutter",
+  "ios",
+  "android",
+  "rn",
+  "harmony",
+  "mobile",
+  "fullstack",
+  "node",
+  "web",
+  "backend",
+  "java",
+  "go",
+  "python",
+  "php",
+  "dotnet",
+  "rust",
+  "cpp",
+  "ruby",
+  "ml",
+  "data-eng",
+  "data-sci",
+  "data-analyst",
+  "devops",
+  "sre",
+  "platform",
+  "qa",
+  "sdet",
+  "security",
+  "pentest",
+  "web3",
+  "solidity",
+  "unity",
+  "unreal",
+  "game",
+  "pm",
+  "design",
+  "design-sys",
+  "em",
+  "lead"
+ ],
+ "generic_title": "engineer|developer|programmer|engineering|\\bswe\\b|software|开发|工程师|manager|designer|architect",
+ "exclude_title": [
+  "sales",
+  "marketing",
+  "recruit",
+  "customer",
+  "account (?:executive|manager)",
+  "accountant",
+  "finance",
+  "legal",
+  "writer",
+  "content (?:manager|creator|strategist)",
+  "\\bhr\\b",
+  "human resources",
+  "销售",
+  "市场",
+  "运营",
+  "财务",
+  "行政",
+  "客服",
+  "商务"
+ ],
+ "stack_mismatch": [],
+ "stack_safe_roles": [],
+ "stack_safe_title": "",
+ "search_terms": 30
+}

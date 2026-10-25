@@ -1,0 +1,70 @@
+{
+ "name": "management",
+ "site": {
+  "title": "技术管理岗位看板",
+  "description": "Engineering Manager、Tech Lead、技术总监岗位，每几小时自动汇总。"
+ },
+ "roles": [
+  {
+   "key": "em",
+   "label": "工程经理",
+   "keywords": [
+    "engineering manager",
+    "engineering director",
+    "head of engineering",
+    "vp engineering",
+    "技术经理",
+    "研发经理",
+    "技术总监",
+    "研发总监"
+   ],
+   "weight": 9
+  },
+  {
+   "key": "lead",
+   "label": "Tech Lead",
+   "keywords": [
+    "tech lead",
+    "technical lead",
+    "staff engineer",
+    "principal engineer",
+    "架构师",
+    "technical architect",
+    "solutions architect"
+   ],
+   "weight": 8
+  }
+ ],
+ "specific_roles": [
+  "em",
+  "lead"
+ ],
+ "generic_title": "manager|lead|director|architect|principal|staff|经理|总监|架构",
+ "exclude_title": [
+  "product (?:manager|owner)",
+  "designer",
+  "sales",
+  "sales",
+  "marketing",
+  "recruit",
+  "customer",
+  "account (?:executive|manager)",
+  "accountant",
+  "finance",
+  "legal",
+  "writer",
+  "content (?:manager|creator|strategist)",
+  "\\bhr\\b",
+  "human resources",
+  "销售",
+  "市场",
+  "运营",
+  "财务",
+  "行政",
+  "客服",
+  "商务"
+ ],
+ "stack_mismatch": [],
+ "stack_safe_roles": [],
+ "stack_safe_title": ""
+}

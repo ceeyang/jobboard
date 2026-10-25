@@ -1,8 +1,10 @@
 import argparse
 import json
+import os
 import sys
+from pathlib import Path
 
-from jobboard import db, roles
+from jobboard import db, profile_config, roles
 
 
 def discover_run(con, channels):
@@ -31,13 +33,55 @@ def main(argv=None):
     dc.add_argument("--file", help="text file with ATS links, `ats:slug` lines or career-page URLs")
     dc.add_argument("--no-commoncrawl", action="store_true", help="skip the Common Crawl index (slow, often overloaded)")
     dc.add_argument("--max", type=int, default=2000, help="probe at most this many new candidates")
+    sub.add_parser("presets", help="list the ready-made profiles (front-end, back-end, mobile, data/AI, ...)")
+    ini = sub.add_parser("init", help="create config/profile.json from a preset, then edit the keywords")
+    ini.add_argument("--preset", required=True, help="see `jobboard presets`")
+    ini.add_argument("--title", help="site title (default: the preset's)")
+    ini.add_argument("--out", default=None, help="where to write (default config/profile.json)")
+    ini.add_argument("--force", action="store_true", help="overwrite an existing profile")
+    pr = sub.add_parser("profile", help="check config/profile.json and try job titles against it")
+    pr.add_argument("--try", dest="titles", nargs="*", metavar="TITLE", help="job titles to score, e.g. --try \"Senior Go Engineer\"")
+    pr.add_argument("--path", default=None)
     sub.add_parser("reanalyze", help="re-score stored jobs after editing profile.py")
     s = sub.add_parser("serve", help="run the web board")
     s.add_argument("--port", type=int, default=8765)
     a = ap.parse_args(argv)
 
     try:
-        if a.cmd in ("fetch", "digest", "reanalyze"):
+        if a.cmd == "presets":
+            for n in profile_config.presets():
+                c = profile_config.validate(profile_config.load_preset(n))
+                print(f"{n:16} {len(c['roles']):2} roles  {c['site']['title']}")
+            return
+        if a.cmd == "init":
+            target = Path(a.out) if a.out else profile_config.PATH
+            if target.exists() and not a.force:
+                raise RuntimeError(f"{target} already exists (use --force to overwrite)")
+            cfg = profile_config.load_preset(a.preset)
+            if a.title:
+                cfg.setdefault("site", {})["title"] = a.title
+            profile_config.validate(cfg)
+            target.parent.mkdir(parents=True, exist_ok=True)
+            target.write_text(json.dumps(cfg, ensure_ascii=False, indent=1) + "\n", encoding="utf-8")
+            print(f"wrote {target}: {len(cfg['roles'])} roles. Edit the keywords there, then check them with:\n"
+                  f"  jobboard profile --try \"Senior Backend Engineer\" \"Sales Manager\"")
+            return
+        if a.cmd == "profile":
+            cfg = profile_config.activate(a.path)
+            if not cfg:
+                raise RuntimeError("no config/profile.json yet: run `jobboard init --preset <name>` first")
+            print(f"{cfg['site']['title']}: {len(cfg['roles'])} roles")
+            for r in cfg["roles"]:
+                print(f"  {r['key']:14} w{r['weight']:<2} {', '.join(r['keywords'])}")
+            for t in a.titles or []:
+                s, tags = profile_config.classify(t)
+                print(f"  {'KEEP' if s >= 5 else 'skip':4} score {s:<2} {t}  {tags}")
+            return
+        # sites built for the public (and anything that exports/builds one) take their roles from config/profile.json;
+        # the personal board keeps managing roles in its database unless JOBBOARD_USE_PROFILE=1
+        use_profile = (a.cmd == "export" or (a.cmd == "fetch" and a.mode == "public") or os.environ.get("JOBBOARD_USE_PROFILE") == "1")
+        cfg = profile_config.activate() if use_profile else None
+        if a.cmd in ("fetch", "digest", "reanalyze") and not cfg:
             roles.activate(db.connect())   # score with the roles configured in the web UI
         if a.cmd == "fetch":
             out = {}
@@ -88,7 +132,8 @@ def main(argv=None):
         elif a.cmd == "export":
             from jobboard import publish
             con = db.connect()
-            roles.activate(con)
+            if not cfg:
+                roles.activate(con)
             print(json.dumps(publish.export(con, a.out, window_days=a.days), ensure_ascii=False, indent=1))
         elif a.cmd == "discover":
             from jobboard.sources import discover
@@ -99,7 +144,7 @@ def main(argv=None):
         elif a.cmd == "serve":
             import uvicorn
             uvicorn.run("jobboard.web:app", host="127.0.0.1", port=a.port)
-    except RuntimeError as exc:
+    except (RuntimeError, ValueError) as exc:     # bad input (unknown preset, invalid profile ...): one clear line, not a traceback
         print(f"Error: {exc}", file=sys.stderr)
         sys.exit(1)
 

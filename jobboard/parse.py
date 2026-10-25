@@ -102,8 +102,8 @@ def role_match(text: str, hint: str = "", structured: bool = False) -> tuple[int
         return min(hits[0][0], 4), [t for _, t in hits]
     score = hits[0][0] + min(3, len(hits) - 1)
     if structured and re.search(profile.STACK_MISMATCH, head, re.I) \
-            and not ({t for _, t in full} & {"flutter", "ios", "android", "mobile"}) \
-            and not re.search(r"react|vue|typescript|node|front-?end", head, re.I):
+            and not ({t for _, t in full} & profile.STACK_SAFE_ROLES) \
+            and not re.search(profile.STACK_SAFE_TITLE, head, re.I):
         return min(score, 4), [t for _, t in hits]  # e.g. ".NET Full-stack": not your stack
     if re.search(profile.REMOTE_RE, text, re.I):
         score += 2
