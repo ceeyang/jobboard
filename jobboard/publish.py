@@ -87,7 +87,7 @@ def export(con, out: str | Path, now: datetime | None = None, window_days: int =
     now = now or datetime.now(timezone.utc)
     cutoff = (now - timedelta(days=window_days)).isoformat()
     jobs = []
-    for r in con.execute("SELECT * FROM jobs WHERE score>=1 AND julianday(posted_at)>=julianday(?) ORDER BY posted_at DESC", (cutoff,)):
+    for r in con.execute("SELECT * FROM jobs WHERE score>=1 AND julianday(posted_at)>=julianday(?) ORDER BY julianday(posted_at) DESC", (cutoff,)):
         j = job_to_public(r)
         if j:
             jobs.append(j)
