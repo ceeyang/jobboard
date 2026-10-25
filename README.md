@@ -1,6 +1,22 @@
 # jobboard
 
-**Public site: https://ceeyang.com/jobboard/** (same as ceeyang.github.io/jobboard/, which redirects there) - rebuilt every hour by GitHub Actions (see "Public site" below).
+**Public site: https://ceeyang.com/jobboard/** (same as ceeyang.github.io/jobboard/, which redirects there) - rebuilt automatically by GitHub Actions.
+
+> **Update frequency: automatic, but not punctual.** The workflow's cron says "every hour", but GitHub decides when a scheduled
+> workflow really starts (best effort). Measured on this repository: **2.4-5.5 hours apart, 4.3 hours on average**. Don't treat it
+> as an hourly promise. "Run workflow" on the Actions tab refreshes at once; the page shows "N hours ago" in its top bar.
+> Want a true hourly run? Call the `workflow_dispatch` API from an external timer (optional, needs a token).
+
+## Make your own board (any kind of job)
+What a site looks for is **one config file**, `config/profile.json`, not code. Pick a preset, edit the keywords, let GitHub Actions
+build the site:
+```bash
+python3 -m jobboard.cli presets                       # frontend, mobile, backend, data-ai, devops, qa, security, web3, game, product, design, ...
+python3 -m jobboard.cli init --preset backend         # writes config/profile.json
+python3 -m jobboard.cli profile --try "Senior Go Engineer" "Sales Manager"     # check your keywords on real titles
+```
+Three ways to deploy (fork and scrape yourself / a light repo that reads an aggregate site's feed / your own organisation with an
+aggregate site plus one site per role): **[docs/FORK.md](docs/FORK.md)**.
 The local edition (this README) additionally reads your private Telegram groups, LinkedIn and key-based APIs.
 
 Reads your Telegram job groups/channels (via `cli-anything-telegram`'s Telethon session), finds postings that
@@ -87,7 +103,7 @@ says otherwise. Run `jobboard reanalyze` once to apply the text rule to jobs sto
 also apply it on the fly).
 
 ## Public site (GitHub Pages)
-`.github/workflows/update.yml` runs every hour (best effort: GitHub may delay scheduled runs) and on demand:
+`.github/workflows/update.yml` is scheduled hourly in the file, but GitHub starts scheduled runs when it likes (about every 4 hours in practice, see the note at the top), and on demand:
 `fetch --mode public` -> `export` -> Pages. State lives on the orphan `data` branch (one commit, replaced each run).
 - **Reduced edition on purpose.** Only whitelisted sources (`jobboard/mode.py`): remote job boards, HN, employers' own ATS boards,
   Sweden, EURES, and the public Telegram channels listed in `config/telegram_channels.txt`. Never LinkedIn, Adzuna/USAJOBS,

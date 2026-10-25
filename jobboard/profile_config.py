@@ -11,6 +11,7 @@ It lives in config/profile.json - start from a preset with `jobboard init --pres
 
 Everything is plain data; no code changes are needed to point a site at another kind of job."""
 import json
+import os
 import re
 from pathlib import Path
 
@@ -104,7 +105,7 @@ def validate(cfg: dict) -> dict:
 
 
 def load(path: str | Path | None = None) -> dict | None:
-    p = Path(path) if path else PATH
+    p = Path(path) if path else Path(os.environ.get("JOBBOARD_PROFILE") or PATH)      # JOBBOARD_PROFILE: use another file without touching config/
     return validate(json.loads(p.read_text(encoding="utf-8"))) if p.exists() else None
 
 

@@ -1,0 +1,145 @@
+{
+ "name": "frontend-mobile",
+ "site": {
+  "title": "前端 / 移动端岗位看板",
+  "description": "Flutter、iOS、Android、前端、全栈岗位，每几小时自动汇总。"
+ },
+ "roles": [
+  {
+   "key": "flutter",
+   "label": "Flutter",
+   "keywords": [
+    "flutter",
+    "dart"
+   ],
+   "weight": 10
+  },
+  {
+   "key": "ios",
+   "label": "iOS",
+   "keywords": [
+    "ios",
+    "swift",
+    "swiftui",
+    "objective-c",
+    "iphone"
+   ],
+   "weight": 7
+  },
+  {
+   "key": "android",
+   "label": "Android",
+   "keywords": [
+    "android",
+    "kotlin"
+   ],
+   "weight": 7
+  },
+  {
+   "key": "mobile",
+   "label": "移动端",
+   "keywords": [
+    "移动端",
+    "客户端",
+    "app开发",
+    "app 开发",
+    "跨端",
+    "跨平台",
+    "react native",
+    "mobile"
+   ],
+   "weight": 6
+  },
+  {
+   "key": "frontend",
+   "label": "前端",
+   "keywords": [
+    "前端",
+    "front-end",
+    "frontend",
+    "react",
+    "vue",
+    "typescript",
+    "h5",
+    "小程序"
+   ],
+   "weight": 5
+  },
+  {
+   "key": "fullstack",
+   "label": "全栈",
+   "keywords": [
+    "全栈",
+    "full-stack",
+    "fullstack",
+    "full stack"
+   ],
+   "weight": 4
+  }
+ ],
+ "specific_roles": [
+  "flutter",
+  "ios",
+  "android"
+ ],
+ "generic_title": "engineer|developer|programmer|engineering|\\bswe\\b|software|开发|工程师",
+ "exclude_title": [
+  "back-?end",
+  "data (?:engineer|scientist|analyst)",
+  "devops",
+  "\\bsre\\b",
+  "site reliability",
+  "machine learning",
+  "\\bml\\b",
+  "product (?:manager|owner|lead)",
+  "designer",
+  "support",
+  "\\bqa\\b",
+  "tester",
+  "testing",
+  "security",
+  "operations",
+  "analyst",
+  "sales",
+  "marketing",
+  "recruit",
+  "customer",
+  "account (?:executive|manager)",
+  "accountant",
+  "finance",
+  "legal",
+  "writer",
+  "content (?:manager|creator|strategist)",
+  "\\bhr\\b",
+  "human resources",
+  "销售",
+  "市场",
+  "运营",
+  "财务",
+  "行政",
+  "客服",
+  "商务"
+ ],
+ "stack_mismatch": [
+  "\\.net",
+  "\\bc#",
+  "\\bjava\\b",
+  "\\bphp\\b",
+  "python",
+  "ruby",
+  "golang",
+  "\\bgo\\b",
+  "\\brust\\b",
+  "elixir",
+  "solidity",
+  "scala",
+  "\\bc\\+\\+"
+ ],
+ "stack_safe_roles": [
+  "flutter",
+  "ios",
+  "android",
+  "mobile"
+ ],
+ "stack_safe_title": "react|vue|typescript|node|front-?end"
+}

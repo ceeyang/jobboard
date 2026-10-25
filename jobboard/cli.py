@@ -37,6 +37,11 @@ def main(argv=None):
     bd.add_argument("--feed", required=True, help="URL of the feed's data folder (https://<org>.github.io/jobboard/data) or a local folder")
     bd.add_argument("--profile", default=None, help="profile file (default config/profile.json)")
     bd.add_argument("--out", default="site")
+    og = sub.add_parser("org-render", help="render the repositories of a GitHub organisation (aggregate engine + one per profile + landing page)")
+    og.add_argument("--org", required=True, help="the GitHub organisation name")
+    og.add_argument("--out", required=True, help="folder to write into")
+    og.add_argument("--engine-repo", default="jobboard")
+    og.add_argument("--presets", nargs="*", help="presets that get their own repository (default: all common tech roles)")
     sub.add_parser("presets", help="list the ready-made profiles (front-end, back-end, mobile, data/AI, ...)")
     ini = sub.add_parser("init", help="create config/profile.json from a preset, then edit the keywords")
     ini.add_argument("--preset", required=True, help="see `jobboard presets`")
@@ -59,6 +64,10 @@ def main(argv=None):
                 raise RuntimeError("no profile found: run `jobboard init --preset <name>` or pass --profile")
             profile_config.apply(cfg)
             print(json.dumps(publish.build_from_feed(a.feed, a.out, cfg), ensure_ascii=False, indent=1))
+            return
+        if a.cmd == "org-render":
+            from jobboard import orgkit
+            print(json.dumps(orgkit.render_all(Path(a.out), a.org, a.engine_repo, a.presets), ensure_ascii=False, indent=1))
             return
         if a.cmd == "presets":
             for n in profile_config.presets():

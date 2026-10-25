@@ -1,6 +1,9 @@
 name: update
 
-# Every hour (cron is best-effort on GitHub; minute 17 avoids the busy top of the hour) and on demand.
+# SCHEDULE: this says "every hour" (minute 17 avoids the busy top of the hour), but GitHub does NOT promise that. Scheduled
+# workflows are best effort and GitHub starts them whenever it likes: measured on this repository the runs were 2.4-5.5 hours
+# apart, 4.3 hours on average. Expect "a few times a day", not hourly. "Run workflow" on the Actions tab runs it at once.
+# Also: GitHub pauses scheduled workflows after 60 days without repository activity (keepalive.yml adds a monthly commit).
 on:
   schedule:
     - cron: "17 * * * *"
