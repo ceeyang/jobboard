@@ -41,6 +41,8 @@ jobs:
       # Standard library only: no dependencies to install. Public mode = whitelisted sources, no Telegram,
       # database reduced to excerpts + links (see jobboard/mode.py and jobboard/publish.py).
       - name: Discover company boards and fetch jobs
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}     # read-only use: lifts the GitHub API limit for the issue boards
         run: python -m jobboard.cli fetch --mode public --no-telegram | tee fetch.json
 
       - name: Build the static site

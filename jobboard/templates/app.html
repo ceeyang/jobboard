@@ -329,8 +329,8 @@ const save=()=>{try{localStorage.setItem(LS,JSON.stringify(S))}catch(e){}};
 let jobs=[],chats=[],limit=PAGE,sel=null,loaded=false,view=[];
 const has=(a,x)=>a.includes(x),toggle=(a,x)=>has(a,x)?a.filter(y=>y!==x):[...a,x];
 const kindNames=k=>[...new Set([...jobs.flatMap(j=>j.sources.filter(x=>x.kind===k).map(x=>x.chat)),...(k==="telegram"?chats.map(c=>c.title):[])])];
-const KIND_LABEL={site:"🌐 招聘网站",gov:"🏛 政府就业服务",telegram:"✈️ Telegram"};
-const KIND_ICON={site:"🌐",gov:"🏛",telegram:"✈️"};
+const KIND_LABEL={site:"🌐 招聘网站",gov:"🏛 政府就业服务",github:"🐙 GitHub",telegram:"✈️ Telegram"};
+const KIND_ICON={site:"🌐",gov:"🏛",github:"🐙",telegram:"✈️"};
 const lab=k=>(ROLES.find(r=>r[0]===k)||[0,k])[1];
 const utc=s=>new Date(String(s).includes("T")||String(s).endsWith("Z")?s:String(s).replace(" ","T")+"Z");
 function ago(d){const m=(Date.now()-d)/6e4;if(m<1)return"刚刚";if(m<60)return Math.floor(m)+" 分钟前";if(m<1440)return Math.floor(m/60)+" 小时前";const dd=Math.floor(m/1440);return dd<31?dd+" 天前":Math.floor(dd/30)+" 个月前"}
@@ -383,10 +383,11 @@ function renderSide(){
   $("#savedq").innerHTML=(sq.length?`<div class="chips">${sq.map((x,i)=>`<span class="chipbtn ${S.q===x.q?"on":""}" data-sq="${i}" role="button" tabindex="0" title="${esc(x.q)}">${esc(x.name)}<b class="x" data-sqdel="${i}" aria-label="删除" title="删除">×</b></span>`).join("")}</div>`:'<div class="count" style="padding:0 6px;font-size:12.5px">在搜索框输入关键词，可保存为常用搜索</div>')+
     (cur&&!already?`<div class="saveq"><input id="sqname" placeholder="名称" value="${esc(cur.slice(0,14))}" maxlength="30" aria-label="常用搜索名称"><button data-sqsave>保存</button></div>`:"");
   const base=filtered("srcs"),cnt=n=>base.filter(j=>j.sources.some(x=>x.chat===n)).length;
-  const sites={},govs={};jobs.forEach(j=>j.sources.forEach(x=>{if(x.kind==="site")sites[x.chat]=1;else if(x.kind==="gov")govs[x.chat]=1}));
+  const sites={},govs={},gits={};jobs.forEach(j=>j.sources.forEach(x=>{if(x.kind==="site")sites[x.chat]=1;else if(x.kind==="gov")govs[x.chat]=1;else if(x.kind==="github")gits[x.chat]=1}));
   const defs=[
     ["site",KIND_LABEL.site,Object.keys(sites).map(n=>({n,url:null}))],
     ["gov",KIND_LABEL.gov,Object.keys(govs).map(n=>({n,url:null}))],
+    ["github",KIND_LABEL.github,Object.keys(gits).map(n=>({n,url:null}))],
     ["telegram","✈️ Telegram",chats.map(c=>({n:c.title,url:c.url}))]
   ];
   $("#srcs").innerHTML=defs.map(([k,label,items])=>{
@@ -422,7 +423,7 @@ function renderActive(){
   if(S.since)f.push(["since","最近 "+SINCES.find(x=>x[0]===S.since)[1]]);
   S.roles.forEach(r=>f.push(["role:"+r,lab(r)]));
   let rest=S.srcs.slice();
-  for(const k of ["site","gov","telegram"]){            // a fully selected group is one chip, not N
+  for(const k of ["site","gov","github","telegram"]){            // a fully selected group is one chip, not N
     const names=kindNames(k);
     if(names.length&&names.every(n=>has(S.srcs,n))){f.push(["grp:"+k,KIND_LABEL[k]+"（全部）"]);rest=rest.filter(n=>!names.includes(n))}
   }

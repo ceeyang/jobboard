@@ -68,6 +68,17 @@ France Travail needs a free OAuth client and is not wired up yet; UK "Find a job
 or the source says so officially (Canada LMIA); `maybe` = only relocation support. An explicit refusal ("no visa
 sponsorship", "must have the right to work") always wins. It is a text heuristic - always confirm with the employer.
 
+## GitHub group (jobs kept in public repositories)
+Sidebar group **🐙 GitHub**, public edition included (excerpt + link to the issue, no contacts).
+| Source | Shape | Notes |
+|---|---|---|
+| Rebase who-is-hiring (`rebase-network/who-is-hiring`) | every job is an issue; read from the community's normalised JSON `hire.rebase.network/jobs.normalized.json` (~900 open, Chinese, blockchain and others, many remote) | the JSON also lists contact channels: they are never read |
+| `frontendbr/vagas`, `react-brasil/vagas`, `backend-br/vagas`, `androiddevbr/vagas`, `flutterbr/vagas` | one open issue = one job (Brazil, Portuguese; many remote roles paid in USD) | list in `config/github_job_repos.txt` (add `owner/repo`, max 9) |
+| SimplifyJobs New-Grad / Summer2027 Internships | structured `listings.json` (13 MB, fetched gzipped) | early-career roles; its `sponsorship` field feeds the visa filter ("Offers Sponsorship" -> yes) |
+Issues are read through the REST API; `GITHUB_TOKEN` (set automatically in the workflow) lifts the limit from 60 to 5000 requests/hour.
+Repositories that are only *directories* (remoteintech/remote-jobs, tech-jobs-with-relocation, awesome-job-boards, open-source-jobs)
+list companies or boards, not postings, so they are not sources; their company links are good input for `jobboard discover --file`.
+
 ## Global remote filter
 The sidebar switch **🌍 只看全球远程** keeps only jobs that are remote, not restricted to a region and not tied to a city.
 "Restricted" is read from the location field *and* from the text ("US only", "must be located in the UK", "authorized to

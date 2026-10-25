@@ -1,0 +1,14 @@
+# GitHub repositories where one open issue = one job posting (owner/repo, one per line, at most 9).
+# They appear in the "GitHub" source group. Found 2026-10-24; all had new job issues within the last weeks
+# (androiddevbr and flutterbr are small but are exactly the mobile roles).
+
+# front-end / full-stack, Brazil, many remote roles paid in USD
+frontendbr/vagas
+# React / React Native
+react-brasil/vagas
+# back-end and full-stack (the biggest of the "vagas" family)
+backend-br/vagas
+# Android / mobile
+androiddevbr/vagas
+# Flutter (very few postings)
+flutterbr/vagas

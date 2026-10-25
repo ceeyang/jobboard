@@ -35,8 +35,9 @@ def all_sources(mode: str | None = None) -> list:
     """Every enabled job source, in the order they are fetched (cheap public feeds first, LinkedIn last).
     mode='public' keeps only the sources allowed on the public site (see jobboard/mode.py)."""
     from jobboard import mode as _mode
-    from jobboard.sources import ats, gov, jsonld, linkedin, more
-    every = adapters.SOURCES + more.SOURCES + gov.SOURCES + ats.SOURCES + jsonld.SOURCES + linkedin.SOURCES
+    from jobboard.sources import ats, github, gov, jsonld, linkedin, more
+    every = (adapters.SOURCES + more.SOURCES + gov.SOURCES + github.sources() + ats.SOURCES + jsonld.SOURCES
+             + linkedin.SOURCES)
     return [s for s in every if _mode.allowed(s[0], mode)]
 
 
