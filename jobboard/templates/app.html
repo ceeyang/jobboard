@@ -348,11 +348,15 @@ function parseQuery(q){   // space = AND, a|b = OR, -term = exclude, "exact phra
   _pq={q,v:{must,not}};return _pq.v;
 }
 const hay=j=>j._hay??(j._hay=(j.title+" "+(j.company||"")+" "+j.text+" "+j.sources.map(x=>x.chat).join(" ")+" "+JSON.stringify(j.contacts)).toLowerCase());
+// Posted time. Some sources only give a day (stored as 00:00 UTC): treat that as "some time that day" and show just the date.
+const dateOnly=j=>/T00:00:00(\+00:00|Z)$/.test(j.posted_at||"");
+const pt=j=>j._pt??=(()=>{const t=utc(j.posted_at).getTime();return dateOnly(j)?Math.min(t+864e5-1,Date.now()):t})();
+const whenText=j=>dateOnly(j)?utc(j.posted_at).toLocaleDateString([],{timeZone:"UTC",month:"numeric",day:"numeric"})+" 发布":ago(utc(j.posted_at));
 // "global remote": remote, not restricted to a region, and not tied to a city ("Remote", "Anywhere", or no location at all)
 const globalRemote=j=>j.remote&&j.geo!=="restricted"&&(j.geo==="worldwide"||!j.location||/^\s*(remote|anywhere|worldwide|global|distributed|work from anywhere)\b/i.test(j.location));
 function match(j,s,skip){
   if(j.score<s.min)return false;
-  if(s.since&&(j._t??=utc(j.posted_at).getTime())<Date.now()-SINCE_MS[s.since])return false;
+  if(s.since&&pt(j)<Date.now()-SINCE_MS[s.since])return false;
   if(skip!=="status"&&(s.status==="all"?j.status==="ignored":j.status!==s.status))return false;
   if(s.roles.length&&!j.tags.some(t=>has(s.roles,t)))return false;
   if(skip!=="srcs"&&s.srcs.length&&!j.sources.some(x=>has(s.srcs,x.chat)))return false;
@@ -367,7 +371,7 @@ function match(j,s,skip){
 }
 const filtered=(skip)=>jobs.filter(j=>match(j,S,skip));
 function sorted(list){
-  const by=S.sort==="new"?(a,b)=>(a.posted_at<b.posted_at?1:-1):(a,b)=>b.score-a.score||(a.posted_at<b.posted_at?1:-1);
+  const by=S.sort==="new"?(a,b)=>pt(b)-pt(a):(a,b)=>b.score-a.score||pt(b)-pt(a);
   return list.slice().sort(by);
 }
 
@@ -461,7 +465,7 @@ function card(j){
   return `<article class="card ${j.status} ${sel===j.id?"sel":""}" data-id="${j.id}">
     <div class="ring ${ringCls}" style="--p:${p}" title="匹配度 ${j.score}"><b>${j.score}</b></div>
     <div class="head"><h3>${esc(j.title)}${isNew?'<span class="new">NEW</span>':""}</h3>
-      <div class="meta">${j.company?`<span>🏢 ${esc(j.company)}</span>`:""}${j.salary?`<span class="sal">💰 ${esc(j.salary)}</span>`:""}${j.remote?"<span>🏠 远程</span>":""}${geo}${visa}<span title="${esc(posted.toLocaleString())}">🕒 ${ago(posted)}</span></div></div>
+      <div class="meta">${j.company?`<span>🏢 ${esc(j.company)}</span>`:""}${j.salary?`<span class="sal">💰 ${esc(j.salary)}</span>`:""}${j.remote?"<span>🏠 远程</span>":""}${geo}${visa}<span title="${esc(dateOnly(j)?"来源只提供日期："+posted.toLocaleDateString([],{timeZone:"UTC"}):posted.toLocaleString())+(j.last_posted?"；最近一次出现 "+utc(j.last_posted).toLocaleString():"")}">🕒 ${whenText(j)}${j.last_posted?` · 重发 ${ago(utc(j.last_posted))}`:""}</span></div></div>
     ${actionsHtml(j)}
     <div class="body">
       <div class="tags">${j.tags.map(t=>`<span class="tag" style="--c:${tagColor(t)}">${esc(lab(t))}</span>`).join("")}</div>
@@ -486,7 +490,7 @@ function renderDetail(keepScroll){
   const primary=(j.sources.find(s=>s.url)||{}).url||(j.contacts.links[0]&&(j.contacts.links[0].startsWith("http")?j.contacts.links[0]:"https://"+j.contacts.links[0]));
   const geo={worldwide:"🌍 全球可申请",restricted:"🚧 限地区",unknown:""}[j.geo]||"";
   const facts=[["匹配度",`${j.score}（${j.tags.map(lab).join("、")||"—"}）`],["公司",j.company],["薪资",j.salary],["地点",[j.location,geo].filter(Boolean).join(" · ")],["签证",{yes:"🛂 雇主可办理担保（请向雇主确认）",maybe:"✈ 提到搬迁支持，签证未明确"}[j.visa]||""],
-    ["方式",j.remote?"远程":""],["发布",posted.toLocaleString()+"（"+ago(posted)+"）"]].filter(f=>f[1]);
+    ["方式",j.remote?"远程":""],["发布",(dateOnly(j)?posted.toLocaleDateString([],{timeZone:"UTC"})+"（来源只提供日期）":posted.toLocaleString()+"（"+ago(posted)+"）")+(j.last_posted?`；最近一次出现 ${utc(j.last_posted).toLocaleString()}（${ago(utc(j.last_posted))}）`:"")]].filter(f=>f[1]);
   el.setAttribute("data-id",j.id);
   el.innerHTML=`<div class="dp-top">
       <button class="ibtn only-narrow" data-closedetail aria-label="关闭详情" title="关闭 (Esc)">✕</button>

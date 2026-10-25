@@ -119,3 +119,37 @@ def test_geo_from_text_reaches_export_and_new_jobs(isolated, tmp_path):
     isolated.commit()
     publish.export(isolated, tmp_path / "site")
     assert json.loads((tmp_path / "site/data/jobs.json").read_text())["jobs"][0]["geo"] == "restricted"
+
+
+# ---- posted time: UTC everywhere, honest ordering, first vs last appearance ------------------------------
+def test_dates_are_normalised_to_utc():
+    from jobboard.sources import adapters
+    assert adapters._iso("2026-10-22T09:16:15-04:00") == "2026-10-22T13:16:15+00:00"
+    assert adapters._iso("Thu, 22 Oct 2026 12:00:00 +0200") == "2026-10-22T10:00:00+00:00"
+    assert adapters._iso("2026-10-21") == "2026-10-21T00:00:00+00:00" and adapters._iso(1792800000).endswith("+00:00")
+    assert db.utc_iso("2026-10-22T09:16:15-04:00") == "2026-10-22T13:16:15+00:00" and db.utc_iso("garbage") == "garbage"
+
+
+def put(con, title, date, chat_id=-1, msg=1, fp=None, chat="RemoteOK"):
+    a = parse.analyze(f"{title}\nAcme", structured=True)
+    a.update(title=title, company="Acme", fingerprint=parse.fingerprint(fp or title))
+    db.upsert(con, a, f"{title}\nAcme", {"chat": chat, "chat_id": chat_id, "msg_id": msg, "date": date, "url": f"https://r/{msg}"})
+    con.commit()
+
+
+def test_jobs_sort_by_real_time_not_by_text(isolated):
+    # 10:00-04:00 is 14:00Z, later than 12:00Z although its text sorts earlier ("10" < "12")
+    put(isolated, "Flutter Dev early", "2026-10-22T12:00:00+00:00", msg=1)
+    put(isolated, "Flutter Dev late", "2026-10-22T10:00:00-04:00", msg=2)
+    assert [r["title"] for r in db.list_jobs(isolated)] == ["Flutter Dev late", "Flutter Dev early"]
+    assert all(r["posted_at"].endswith("+00:00") for r in isolated.execute("SELECT posted_at FROM jobs"))
+
+
+def test_reposted_job_shows_first_and_last_appearance(isolated, tmp_path):
+    now = datetime.now(timezone.utc)
+    put(isolated, "Flutter Dev", (now - timedelta(days=10)).isoformat(), msg=1, fp="same")
+    put(isolated, "Flutter Dev", (now - timedelta(days=1)).isoformat(), chat_id=-2, msg=2, fp="same", chat="Remotive")   # posted again yesterday
+    publish.export(isolated, tmp_path / "site")
+    j = json.loads((tmp_path / "site/data/jobs.json").read_text())["jobs"][0]
+    assert j["posted_at"] < j["last_posted"] and j["last_posted"].endswith("+00:00")
+    assert db.post_times(j["posted_at"], [{"date": j["posted_at"]}, {"date": (now - timedelta(days=9.9)).isoformat()}])[1] is None   # <1 day apart: no second date

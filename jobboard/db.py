@@ -45,6 +45,7 @@ def connect(path: str | Path | None = None) -> sqlite3.Connection:
 
 def upsert(con, a: dict, text: str, src: dict) -> bool:
     """Insert a job or merge another source into an existing one. True if new."""
+    src = {**src, "date": utc_iso(src.get("date"))}
     row = con.execute("SELECT id, sources FROM jobs WHERE fingerprint=?", (a["fingerprint"],)).fetchone()
     if row:
         sources = json.loads(row["sources"])
@@ -54,7 +55,7 @@ def upsert(con, a: dict, text: str, src: dict) -> bool:
         # a job is as old as its earliest sighting, so "last day" never shows a re-listed old posting
         dates = [d for d in (s.get("date") for s in sources) if _ts(d) is not None]
         if dates:
-            con.execute("UPDATE jobs SET posted_at=? WHERE id=?", (min(dates, key=_ts), row["id"]))
+            con.execute("UPDATE jobs SET posted_at=? WHERE id=?", (utc_iso(min(dates, key=_ts)), row["id"]))
         if a.get("visa") == "yes":   # one source saying "employer sponsors" is enough
             con.execute("UPDATE jobs SET visa='yes' WHERE id=?", (row["id"],))
         return False
@@ -76,6 +77,22 @@ def _ts(iso: str | None) -> float | None:
     return (d if d.tzinfo else d.replace(tzinfo=timezone.utc)).timestamp()
 
 
+def utc_iso(iso: str | None) -> str | None:
+    """Any ISO timestamp -> the same instant in UTC ('+00:00'), so text order == time order. Unparseable: unchanged."""
+    t = _ts(iso)
+    return datetime.fromtimestamp(t, timezone.utc).isoformat() if t is not None else iso
+
+
+def post_times(posted_at: str | None, sources: list[dict]) -> tuple[str | None, str | None]:
+    """(first posted, last re-posted). The second is None unless a source showed the job again >= 1 day after the first."""
+    first = utc_iso(posted_at)
+    dates = [t for t in (_ts(s.get("date")) for s in sources) if t is not None]
+    f = _ts(first)
+    if f is not None and dates and max(dates) - f >= 86400:
+        return first, datetime.fromtimestamp(max(dates), timezone.utc).isoformat()
+    return first, None
+
+
 def since_cutoff(since: str | None, now: datetime | None = None) -> str | None:
     """'1d'|'3d'|'7d'|'30d' -> ISO cutoff; None/'' = no limit. Unknown values raise ValueError."""
     if not since:
@@ -88,9 +105,9 @@ def since_cutoff(since: str | None, now: datetime | None = None) -> str | None:
 def list_jobs(con, min_score: int = 1, limit: int = 500, since: str | None = None):
     cutoff = since_cutoff(since)
     if cutoff is None:
-        return con.execute("SELECT * FROM jobs WHERE score>=? ORDER BY posted_at DESC LIMIT ?", (min_score, limit)).fetchall()
+        return con.execute("SELECT * FROM jobs WHERE score>=? ORDER BY julianday(posted_at) DESC LIMIT ?", (min_score, limit)).fetchall()
     return con.execute("SELECT * FROM jobs WHERE score>=? AND julianday(posted_at)>=julianday(?) "
-                       "ORDER BY posted_at DESC LIMIT ?", (min_score, cutoff, limit)).fetchall()
+                       "ORDER BY julianday(posted_at) DESC LIMIT ?", (min_score, cutoff, limit)).fetchall()
 
 
 # ---- company registry (ATS boards) ------------------------------------------------------------------

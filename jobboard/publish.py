@@ -71,10 +71,11 @@ def job_to_public(r) -> dict | None:
     sources = public_sources(json.loads(r["sources"]))
     if not sources:
         return None
+    posted, last = db.post_times(r["posted_at"], sources)
     return {"id": numeric_id(r["fingerprint"]), "title": redact(r["title"]), "company": redact(r["company"]),
             "location": r["location"], "geo": r["geo"] if r["geo"] not in (None, "", "unknown") else parse.geo_from_text(r["text"]), "salary": r["salary"], "remote": bool(r["remote"]),
             "score": r["score"], "tags": json.loads(r["tags"]), "risks": json.loads(r["risks"]), "visa": r["visa"] or "",
-            "posted_at": r["posted_at"], "first_seen": _first_seen(r), "status": "new", "text": excerpt(r["text"]),
+            "posted_at": posted, "last_posted": last, "first_seen": _first_seen(r), "status": "new", "text": excerpt(r["text"]),
             "contacts": {"telegram": [], "email": [], "links": _public_links(sources)},
             "sources": [{"chat": s["chat"], "chat_id": s["chat_id"], "msg_id": s["msg_id"], "date": s["date"], "url": s["url"],
                          "channel_url": None, "kind": mode.kind(s["chat"], s["chat_id"])} for s in sources]}

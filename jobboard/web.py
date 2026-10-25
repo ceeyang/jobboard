@@ -31,6 +31,7 @@ def _decode(r, usernames: dict | None = None) -> dict:
     d = dict(r)
     for k in ("tags", "risks", "contacts", "sources"):
         d[k] = json.loads(d[k])
+    d["posted_at"], d["last_posted"] = db.post_times(d.get("posted_at"), d["sources"])
     if (d.get("geo") or "unknown") == "unknown":   # location field empty (Telegram, HN ...): maybe the text says "US only"
         d["geo"] = parse.geo_from_text(d.get("text"))
     for s in d["sources"]:

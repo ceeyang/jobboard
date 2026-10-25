@@ -103,6 +103,13 @@ also apply it on the fly).
 - Pages must stay public on a free account; what is published is public to everybody, so keep the whitelist conservative.
 - If GitHub pauses the schedule after 60 days without repository activity, re-enable it on the Actions page.
 
+## How the posted time is decided
+- Every date is stored and exported in **UTC** (`+00:00`); sorting and the 1d/3d/1w/1m filter compare real instants, not text.
+- A job's date is the **earliest** date any of its sources reported (first appearance). If a source showed the same job again
+  a day or more later (a Telegram channel re-posting an ad), the card adds "重发 X 前" and the detail panel shows both times.
+- Sources that only give a **day** (SimplifyJobs, LinkedIn, Canada, Germany) are shown as "10/23 发布" instead of an invented hour,
+  and count as "some time that day" for the filter and the ordering.
+
 ## Time range
 The board has a **发布时间** filter: any / 1 day / 3 days / 1 week / 1 month. The API takes `?since=1d|3d|7d|30d`.
 A job's date is the earliest date any of its sources reported, so a posting re-listed elsewhere does not look new.

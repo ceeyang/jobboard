@@ -40,7 +40,7 @@ def _iso(v) -> str:
             d = parsedate_to_datetime(str(v))
         except (TypeError, ValueError):
             return datetime.now(timezone.utc).isoformat()
-    return (d if d.tzinfo else d.replace(tzinfo=timezone.utc)).isoformat()
+    return (d if d.tzinfo else d.replace(tzinfo=timezone.utc)).astimezone(timezone.utc).isoformat()   # always UTC: sorts and filters right
 
 
 def remoteok():
