@@ -74,3 +74,21 @@ def test_render_all(tmp_path, capsys):
 def test_all_common_roles_have_a_repository():
     assert set(orgkit.PROFILE_PRESETS) <= set(pc.presets()) and "frontend-mobile" not in orgkit.PROFILE_PRESETS
     assert {"frontend", "backend", "mobile", "fullstack", "data-ai", "devops", "qa", "security"} <= set(orgkit.PROFILE_PRESETS)
+
+
+def test_engine_repo_can_be_the_org_named_repository(tmp_path, capsys):
+    cli.main(["org-render", "--org", "devopenings", "--engine-repo", "devopenings", "--out", str(tmp_path), "--presets", "backend"])
+    m = json.loads(capsys.readouterr().out)
+    assert m["engine"]["url"] == "https://devopenings.github.io/devopenings/"
+    wf = (tmp_path / "backend/.github/workflows/update.yml").read_text(encoding="utf-8")
+    assert "ENGINE_REPO: devopenings/devopenings" in wf and "FEED_URL: https://devopenings.github.io/devopenings/data" in wf
+    prof = (tmp_path / "orgprofile/profile/README.md").read_text(encoding="utf-8")
+    assert "https://devopenings.github.io/backend/" in prof and "不准点" in prof and "devopenings/devopenings/blob/main/docs/FORK.md" in prof
+    assert m["org_profile"]["repo"] == ".github"
+
+
+def test_engine_readme_points_at_the_organisation_not_the_original_author(tmp_path, capsys):
+    cli.main(["org-render", "--org", "devopenings", "--engine-repo", "devopenings", "--out", str(tmp_path), "--presets", "backend"])
+    capsys.readouterr()
+    readme = (tmp_path / "engine/README.md").read_text(encoding="utf-8")
+    assert "**Aggregate site: https://devopenings.github.io/devopenings/**" in readme and "ceeyang.com" not in readme.split("\n## ")[0]

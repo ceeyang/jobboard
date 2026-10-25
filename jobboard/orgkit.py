@@ -53,7 +53,7 @@ def render_profile_repo(dest: Path, preset: str, org: str, engine_repo: str = EN
             "url": pages_url(org, preset) + "/", "roles": len(cfg["roles"])}
 
 
-def prepare_engine(dest: Path, profile: str = AGGREGATE_PRESET) -> dict:
+def prepare_engine(dest: Path, profile: str = AGGREGATE_PRESET, org: str | None = None, engine_repo: str = ENGINE_REPO) -> dict:
     """The engine repository = this project's files (tracked, plus new ones that .gitignore does not exclude), with the aggregate profile as its config/profile.json."""
     dest = Path(dest)
     files = subprocess.run(["git", "ls-files", "--cached", "--others", "--exclude-standard"], cwd=ROOT, capture_output=True, text=True,
@@ -63,6 +63,15 @@ def prepare_engine(dest: Path, profile: str = AGGREGATE_PRESET) -> dict:
         if src.is_file():
             (dest / f).parent.mkdir(parents=True, exist_ok=True)
             shutil.copy2(src, dest / f)
+    readme = dest / "README.md"
+    if org and readme.exists():     # the copied README talks about the original author's own site: point it at this organisation instead
+        lines = readme.read_text(encoding="utf-8").splitlines()
+        for i, line in enumerate(lines):
+            if line.startswith("**Public site:"):
+                lines[i] = (f"**Aggregate site: {pages_url(org, engine_repo)}/** - every common tech role in one place; the role sites "
+                            f"(front-end, back-end, mobile, ...) are listed at https://{org}.github.io/ and read this site's data feed.")
+                break
+        readme.write_text("\n".join(lines) + "\n", encoding="utf-8")
     cfg = profile_config.load_preset(profile)
     cfg["name"] = profile
     profile_config.validate(cfg)
@@ -100,14 +109,28 @@ def render_landing(dest: Path, org: str, profiles: list[dict], aggregate: dict, 
     (dest / ".nojekyll").write_text("")
 
 
+def render_org_profile(dest: Path, org: str, profiles: list[dict], aggregate: dict, engine_repo: str = ENGINE_REPO) -> None:
+    """The text shown at github.com/<org> (it comes from the special repository `.github`, file profile/README.md)."""
+    rows = "\n".join(f"| [{p['title']}]({p['url']}) | {p['description']} |" for p in profiles)
+    text = (f"# 技术岗位看板\n\n按方向分开的公开岗位看板：数据来自远程招聘站、企业招聘页、政府就业服务、GitHub 招聘仓库和公开的 Telegram 频道，"
+            f"只显示摘要和原帖链接。\n\n**[{aggregate['title']}]({pages_url(org, engine_repo)}/)**（全部方向）　·　"
+            f"[首页](https://{org}.github.io/)\n\n| 方向 | 说明 |\n|---|---|\n{rows}\n\n"
+            f"**自动更新，但不准点**：GitHub 的定时触发是尽力而为（实测每 2–6 小时一次），每个站点右上角会显示上次更新时间。\n\n"
+            f"想要自己的方向？每个站点就是一份关键词配置，见 [部署指南](https://github.com/{org}/{engine_repo}/blob/main/docs/FORK.md)。\n")
+    (Path(dest) / "profile").mkdir(parents=True, exist_ok=True)
+    (Path(dest) / "profile/README.md").write_text(text, encoding="utf-8")
+
+
 def render_all(out: Path, org: str, engine_repo: str = ENGINE_REPO, presets: list[str] | None = None) -> dict:
     out = Path(out)
     out.mkdir(parents=True, exist_ok=True)
-    engine = prepare_engine(out / "engine")
+    engine = prepare_engine(out / "engine", org=org, engine_repo=engine_repo)
     profiles = [render_profile_repo(out / p, p, org, engine_repo) for p in (presets or PROFILE_PRESETS)]
     render_landing(out / "landing", org, profiles, engine, engine_repo)
+    render_org_profile(out / "orgprofile", org, profiles, engine, engine_repo)
     manifest = {"org": org, "engine": {**engine, "dir": "engine", "url": pages_url(org, engine_repo) + "/"},
                 "profiles": [{**p, "dir": p["repo"]} for p in profiles],
-                "landing": {"repo": f"{org}.github.io", "dir": "landing", "url": f"https://{org}.github.io/"}}
+                "landing": {"repo": f"{org}.github.io", "dir": "landing", "url": f"https://{org}.github.io/"},
+                "org_profile": {"repo": ".github", "dir": "orgprofile"}}
     (out / "manifest.json").write_text(json.dumps(manifest, ensure_ascii=False, indent=1), encoding="utf-8")
     return manifest

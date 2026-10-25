@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Deploy an aggregate job site plus one site per role family into a GitHub organisation.
 #
-#   scripts/deploy_org.sh <org> [--dry-run] [--only backend,mobile] [--no-landing]
+#   scripts/deploy_org.sh <org> [--engine-repo NAME] [--dry-run] [--only backend,mobile] [--no-landing]
 #
 # Before you run it:
 #   1. Create the organisation on github.com (Your organizations -> New). GitHub does NOT let the command line / API
@@ -18,12 +18,13 @@
 set -euo pipefail
 
 ORG="${1:-}"; shift || true
-DRY=0; ONLY=""; LANDING=1
+DRY=0; ONLY=""; LANDING=1; ENGINE="jobboard"
 while [ $# -gt 0 ]; do
   case "$1" in
     --dry-run) DRY=1 ;;
     --only) ONLY="$2"; shift ;;
     --no-landing) LANDING=0 ;;
+    --engine-repo) ENGINE="$2"; shift ;;
     *) echo "unknown option $1" >&2; exit 2 ;;
   esac; shift
 done
@@ -32,7 +33,6 @@ done
 HERE="$(cd "$(dirname "$0")/.." && pwd)"
 PY="${PYTHON:-python3}"
 WORK="$(mktemp -d)"
-ENGINE="jobboard"
 say() { printf '\n== %s\n' "$*"; }
 
 if [ "$DRY" = 0 ]; then
@@ -45,7 +45,7 @@ fi
 say "rendering repositories into $WORK"
 PRESETS_ARG=()
 [ -z "$ONLY" ] || PRESETS_ARG=(--presets ${ONLY//,/ })
-PYTHONPATH="$HERE" "$PY" -m jobboard.cli org-render --org "$ORG" --out "$WORK" ${PRESETS_ARG[@]+"${PRESETS_ARG[@]}"} > "$WORK/manifest.out"
+PYTHONPATH="$HERE" "$PY" -m jobboard.cli org-render --org "$ORG" --engine-repo "$ENGINE" --out "$WORK" ${PRESETS_ARG[@]+"${PRESETS_ARG[@]}"} > "$WORK/manifest.out"
 "$PY" -c "import json,sys; m=json.load(open(sys.argv[1])); print(len(m['profiles']),'role repositories + engine + landing page')" "$WORK/manifest.json"
 
 if [ "$DRY" = 0 ]; then
@@ -68,6 +68,7 @@ publish_dir() {   # <dir> <repo> <description> <pages: workflow|branch>
     git commit -q -m "Deploy $repo" -m "Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>"
     git push -q --force "https://github.com/$ORG/$repo.git" main:main
   )
+  if [ "$pages" = none ]; then return; fi
   if [ "$pages" = workflow ]; then
     gh api -X POST "repos/$ORG/$repo/pages" -f build_type=workflow >/dev/null 2>&1 \
       || gh api -X PUT "repos/$ORG/$repo/pages" -f build_type=workflow >/dev/null 2>&1 || true
@@ -104,9 +105,10 @@ while IFS=$'\t' read -r repo desc; do
   [ "$DRY" = 1 ] || run_workflow "$repo" >/dev/null
 done < "$WORK/profiles.tsv"
 
-# 3. landing page at https://<org>.github.io/
+# 3. landing page at https://<org>.github.io/ and the text shown at github.com/<org>
 if [ "$LANDING" = 1 ]; then
   publish_dir "$WORK/landing" "$ORG.github.io" "Tech job boards by role" branch
+  publish_dir "$WORK/orgprofile" ".github" "Organisation profile" none
 fi
 
 say "done"

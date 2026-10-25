@@ -55,7 +55,8 @@ python3 -m jobboard.cli org-render --org <你的账号或组织> --out /tmp/out 
 3. 预演，然后正式部署：
    ```bash
    scripts/deploy_org.sh <组织名> --dry-run
-   scripts/deploy_org.sh <组织名>
+   scripts/deploy_org.sh <组织名>                           # 引擎仓库默认叫 jobboard
+   scripts/deploy_org.sh <组织名> --engine-repo <仓库名>   # 或者用组织里已有的仓库（比如和组织同名的那个）
    ```
    会创建：`<组织>/jobboard`（聚合站 + 数据源）、每个方向一个仓库（frontend、backend、mobile、fullstack、data-ai、devops、qa、security、web3、game、product、design、management）、
    以及 `<组织>.github.io`（首页，链到所有站点）。可以重复运行，已存在的仓库会被更新。
