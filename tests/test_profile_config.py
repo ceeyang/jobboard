@@ -214,3 +214,12 @@ def test_a_role_is_listed_once_even_if_title_and_site_tags_both_name_it():
     use("backend")
     score, tags = parse.role_match("Software Engineer AI Coding Tasks\nAskable", "dev python javascript golang java python", True)
     assert len(tags) == len(set(tags)) and "python" in tags
+
+
+def test_levels_validation_and_defaults():
+    base = {"roles": [{"key": "ok", "label": "OK", "keywords": ["okay"]}]}
+    assert pc.validate(base)["levels"] == {"recommended": 5, "strict": 10}
+    assert pc.validate(pc.load_preset("all-tech"))["levels"] == {"recommended": 12, "strict": 14}
+    for bad in ({"recommended": 10, "strict": 5}, {"recommended": 1, "strict": 5}, {"recommended": 5, "strict": 25}, {"recommended": "x"}):
+        with pytest.raises(ValueError, match="levels"):
+            pc.validate({**base, "levels": bad})

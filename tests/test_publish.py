@@ -60,7 +60,8 @@ def test_site_files_are_written_and_patched(isolated, tmp_path):
     page = (tmp_path / "site/index.html").read_text(encoding="utf-8")
     assert page.index('src="shim.js"') < page.index("const STATUS=") and "JB_STATIC.label()" in page
     assert (tmp_path / "site/shim.js").exists() and (tmp_path / "site/.nojekyll").exists()
-    assert {"jobs", "channels", "roles", "meta"} == {p.stem for p in (tmp_path / "site/data").glob("*.json")}
+    assert {"jobs", "channels", "roles", "meta", "stats"} == {p.stem for p in (tmp_path / "site/data").glob("*.json")}
+    assert (tmp_path / "site/overview.js").exists() and (tmp_path / "site/feed.xml").exists() and (tmp_path / "site/feed.json").exists()
 
 
 def test_scrub_db_leaves_only_excerpts_and_links(isolated):
@@ -181,3 +182,100 @@ def test_prune_drops_only_old_jobs(isolated):
     put(isolated, "Flutter Dev recent", (now - timedelta(days=5)).isoformat(), msg=2)
     assert db.prune(isolated, 60) == 1
     assert [r["title"] for r in isolated.execute("SELECT title FROM jobs")] == ["Flutter Dev recent"]
+
+
+# ---- overview numbers, feeds, levels ----------------------------------------------------------------------------
+import xml.etree.ElementTree as ET
+from jobboard import profile_config as pc
+
+
+def fake_job(i, title, tags, hours_ago, now, score=12, company=None, visa="", remote=True, location="Remote"):
+    posted = (now - timedelta(hours=hours_ago)).isoformat()
+    return {"id": i, "title": title, "company": company if company is not None else f"Co{i}", "location": location, "geo": "unknown", "salary": None,
+            "remote": remote, "score": score, "tags": tags, "risks": [], "visa": visa, "posted_at": posted, "last_posted": None, "first_seen": posted,
+            "status": "new", "text": f"{title} at Co{i}. Remote friendly.", "structured": True, "hint": "",
+            "contacts": {"telegram": [], "email": [], "links": [f"https://x/{i}"]},
+            "sources": [{"chat": "RemoteOK", "chat_id": -1, "msg_id": i, "date": posted, "url": f"https://x/{i}", "channel_url": None, "kind": "site"}]}
+
+
+NOW = datetime(2026, 10, 25, 12, 0, tzinfo=timezone.utc)
+
+
+def test_overview_numbers():
+    jobs = [fake_job(1, "A", ["backend"], 2, NOW), fake_job(2, "B", ["backend"], 30, NOW, remote=False), fake_job(3, "C", ["go"], 24 * 8, NOW),
+            fake_job(4, "D", ["go"], 24 * 9, NOW, visa="yes", company="Acme"), fake_job(5, "E", ["go"], 24 * 3, NOW, visa="yes", company="Acme")]
+    st = publish.compute_stats(jobs, NOW, None, [{"key": "backend", "label": "后端"}, {"key": "go", "label": "Go"}], 5)
+    t = st["totals"]
+    assert t["jobs"] == 5 and t["new_24h"] == 1 and t["new_7d"] == 3 and t["prev_7d"] == 2 and t["remote_pct"] == 80 and t["visa_yes"] == 2
+    assert [d["count"] for d in st["daily"]][-1] == 1 and len(st["daily"]) == 14 and sum(d["count"] for d in st["daily"]) == 5
+    assert {i["label"]: i["count"] for i in st["distribution"]["items"]} == {"后端": 2, "Go": 3}
+    assert st["visa_employers"][0]["company"] == "Acme" and st["visa_employers"][0]["count"] == 2 and len(st["visa_employers"][0]["jobs"]) == 2
+
+
+def test_picks_are_recent_varied_and_best_first():
+    jobs = [fake_job(i, f"Backend Dev {i}", ["backend"], 1 + i, NOW, score=14 - i % 3) for i in range(1, 7)]      # six backend jobs
+    jobs += [fake_job(10, "Flutter Dev", ["flutter"], 5, NOW, score=10), fake_job(11, "Old Dev", ["flutter"], 24 * 5, NOW, score=15),
+             fake_job(12, "Same Co", ["ios"], 3, NOW, score=12, company="Co1")]
+    picks = publish.compute_stats(jobs, NOW, None, [], 5)["picks"]
+    titles = [p["title"] for p in picks]
+    assert sum(t.startswith("Backend") for t in titles) == 2                     # at most two per role
+    assert len({p["company"] for p in picks}) == len(picks)                      # one per company
+    assert "Flutter Dev" in titles and len(picks) <= 8 and titles[-1] == "Old Dev"   # the last-two-days jobs first, older ones only fill up
+    fresh = picks[:-1]                                                          # the old job only fills up, so compare the recent ones
+    assert fresh[0]["score"] == max(p["score"] for p in fresh)
+    quiet = publish.compute_stats([fake_job(1, "Only old", ["go"], 24 * 5, NOW)], NOW, None, [], 5)["picks"]
+    assert [p["title"] for p in quiet] == ["Only old"]                          # a quiet week widens the window instead of showing nothing
+
+
+def test_aggregate_overview_groups_roles_into_families_with_links():
+    cfg = pc.validate(pc.load_preset("all-tech"))
+    jobs = [fake_job(1, "Go Dev", ["go", "backend"], 3, NOW), fake_job(2, "Flutter Dev", ["flutter"], 3, NOW), fake_job(3, "React Dev", ["react"], 3, NOW)]
+    st = publish.compute_stats(jobs, NOW, cfg, pc.roles_for_ui(cfg), 12, "https://devopenings.github.io")
+    fam = {i["key"]: i for i in st["distribution"]["items"]}
+    assert st["distribution"]["kind"] == "families" and fam["backend"]["count"] == 1 and fam["mobile"]["count"] == 1 and fam["frontend"]["count"] == 1
+    assert fam["backend"]["url"] == "https://devopenings.github.io/backend/" and fam["backend"]["label"] == "后端"
+
+
+def test_feeds_are_valid_and_carry_no_contacts(isolated, tmp_path):
+    put(isolated, "Flutter Dev <b> & co", "2026-10-24T10:00:00+00:00", msg=1)
+    put(isolated, "Android Dev", "2026-10-25T09:00:00+00:00", msg=2)
+    isolated.execute("UPDATE jobs SET score=12")
+    isolated.commit()
+    publish.export(isolated, tmp_path / "site", now=datetime(2026, 10, 25, 12, 0, tzinfo=timezone.utc))
+    items = ET.parse(tmp_path / "site/feed.xml").getroot().findall("channel/item")
+    assert [i.findtext("title") for i in items] == ["Acme: Android Dev", "Acme: Flutter Dev <b> & co"]                 # newest first, markup survives escaping
+    assert items[0].findtext("link") == "https://r/2" and items[0].find("guid").get("isPermaLink") == "false"
+    jf = json.loads((tmp_path / "site/feed.json").read_text(encoding="utf-8"))
+    assert jf["version"].startswith("https://jsonfeed.org/version/1") and [i["url"] for i in jf["items"]] == ["https://r/2", "https://r/1"]
+    assert "rel=\"alternate\" type=\"application/rss+xml\"" in (tmp_path / "site/index.html").read_text(encoding="utf-8")
+
+
+def test_feed_uses_the_configured_site_url(isolated, tmp_path, monkeypatch):
+    monkeypatch.setenv("JOBBOARD_SITE_URL", "https://example.org/jobs")
+    put(isolated, "Flutter Dev", "2026-10-24T10:00:00+00:00", msg=1)
+    isolated.execute("UPDATE jobs SET score=12")
+    isolated.commit()
+    publish.export(isolated, tmp_path / "site", now=datetime(2026, 10, 25, 12, 0, tzinfo=timezone.utc))
+    xml = (tmp_path / "site/feed.xml").read_text(encoding="utf-8")
+    assert "<link>https://example.org/jobs/</link>" in xml and 'href="https://example.org/jobs/feed.xml"' in xml
+    assert json.loads((tmp_path / "site/feed.json").read_text(encoding="utf-8"))["feed_url"] == "https://example.org/jobs/feed.json"
+
+
+def test_levels_are_written_into_the_page(isolated, tmp_path):
+    cfg = pc.validate(pc.load_preset("all-tech"))
+    pc.apply(cfg)
+    publish.export(isolated, tmp_path / "site")
+    page = (tmp_path / "site/index.html").read_text(encoding="utf-8")
+    assert 'const LEVELS=[[1,"宽松"],[12,"推荐"],[14,"严格"]];' in page and 'status:"all",min:12,since:""' in page
+    pc.reset()
+    publish.export(isolated, tmp_path / "plain")
+    assert 'const LEVELS=[[1,"宽松"],[5,"推荐"],[10,"严格"]];' in (tmp_path / "plain/index.html").read_text(encoding="utf-8")
+
+
+def test_stats_never_contain_contacts(isolated, tmp_path):
+    put(isolated, "Flutter Dev", "2026-10-24T10:00:00+00:00", msg=1)
+    isolated.execute("UPDATE jobs SET score=12, text='Mail hr@example.com or @some_recruiter', visa='yes'")
+    isolated.commit()
+    publish.export(isolated, tmp_path / "site", now=datetime(2026, 10, 25, 12, 0, tzinfo=timezone.utc))
+    blob = (tmp_path / "site/data/stats.json").read_text(encoding="utf-8") + (tmp_path / "site/feed.xml").read_text(encoding="utf-8") + (tmp_path / "site/feed.json").read_text(encoding="utf-8")
+    assert "hr@example.com" not in blob and "some_recruiter" not in blob

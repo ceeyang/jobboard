@@ -26,6 +26,7 @@ CREATE TABLE IF NOT EXISTS companies(   -- boards the ATS adapters walk; ats='we
 CREATE INDEX IF NOT EXISTS jobs_score ON jobs(score DESC, posted_at DESC);
 """
 SINCE_DAYS = {"1d": 1, "3d": 3, "7d": 7, "30d": 30}   # board time-range buttons
+VISA_RULES = "2"        # bump when the visa/relocation rules change: stored flags are cleared once and rebuilt by the next fetch
 MAX_FAILS = 5                                         # consecutive failures before a company board is deactivated
 
 
@@ -39,6 +40,10 @@ def connect(path: str | Path | None = None) -> sqlite3.Connection:
     for col, ddl in (("company", "TEXT"), ("location", "TEXT"), ("geo", "TEXT DEFAULT 'unknown'"), ("hint", "TEXT DEFAULT ''"), ("visa", "TEXT DEFAULT ''")):
         if col not in have:  # lightweight migration for databases created before web sources existed
             con.execute(f"ALTER TABLE jobs ADD COLUMN {col} {ddl}")
+    done = con.execute("SELECT value FROM settings WHERE key='visa_rules'").fetchone()
+    if not done or json.loads(done["value"]) != VISA_RULES:    # e.g. "We do not provide visa assistance" used to be read as a yes
+        con.execute("UPDATE jobs SET visa='' WHERE visa!=''")
+        con.execute("INSERT INTO settings(key,value) VALUES('visa_rules',?) ON CONFLICT(key) DO UPDATE SET value=excluded.value", (json.dumps(VISA_RULES),))
     con.commit()
     return con
 
@@ -56,8 +61,8 @@ def upsert(con, a: dict, text: str, src: dict) -> bool:
         dates = [d for d in (s.get("date") for s in sources) if _ts(d) is not None]
         if dates:
             con.execute("UPDATE jobs SET posted_at=? WHERE id=?", (utc_iso(min(dates, key=_ts)), row["id"]))
-        if a.get("visa") == "yes":   # one source saying "employer sponsors" is enough
-            con.execute("UPDATE jobs SET visa='yes' WHERE id=?", (row["id"],))
+        if a.get("visa"):            # one source saying "employer sponsors" is enough; "yes" outranks "maybe" (relocation only)
+            con.execute("UPDATE jobs SET visa=CASE WHEN visa='yes' THEN visa WHEN ?='yes' THEN 'yes' ELSE ? END WHERE id=?", (a["visa"], a["visa"], row["id"]))
         return False
     con.execute(
         "INSERT INTO jobs(fingerprint,title,salary,text,score,tags,risks,remote,contacts,sources,posted_at,"

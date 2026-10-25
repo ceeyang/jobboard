@@ -20,6 +20,7 @@ permissions:
 env:
   ENGINE_REPO: __ENGINE_REPO__          # the repository that holds the jobboard code
   FEED_URL: __FEED_URL__                # where the aggregate site publishes its data files
+  JOBBOARD_SITE_URL: __SITE_URL__       # this site's own address (absolute links in its RSS feed)
 
 jobs:
   build:

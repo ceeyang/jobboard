@@ -40,7 +40,8 @@ def render_profile_repo(dest: Path, preset: str, org: str, engine_repo: str = EN
         cfg["site"]["title"] = title
     profile_config.validate(cfg)
     values = {"ENGINE_REPO": f"{org}/{engine_repo}", "FEED_URL": f"{pages_url(org, engine_repo)}/data", "TITLE": cfg["site"]["title"],
-              "DESCRIPTION": cfg["site"].get("description", ""), "PRESET": preset, "AGGREGATE_URL": pages_url(org, engine_repo) + "/"}
+              "DESCRIPTION": cfg["site"].get("description", ""), "PRESET": preset, "AGGREGATE_URL": pages_url(org, engine_repo) + "/",
+              "SITE_URL": pages_url(org, preset) + "/"}
     dest = Path(dest)
     for src in TEMPLATE.rglob("*"):
         if src.is_file():
@@ -76,6 +77,8 @@ def prepare_engine(dest: Path, profile: str = AGGREGATE_PRESET, org: str | None 
     cfg["name"] = profile
     profile_config.validate(cfg)
     (dest / "config").mkdir(parents=True, exist_ok=True)
+    if org:    # where this site lives: absolute links in the feeds, and the overview links to the role sites
+        (dest / "config/site.json").write_text(json.dumps({"site_url": pages_url(org, engine_repo) + "/", "sites_base": f"https://{org}.github.io"}, indent=1) + "\n", encoding="utf-8")
     (dest / "config/profile.json").write_text(json.dumps(cfg, ensure_ascii=False, indent=1) + "\n", encoding="utf-8")
     return {"repo": ENGINE_REPO, "preset": profile, "title": cfg["site"]["title"], "description": cfg["site"].get("description", ""),
             "files": len(files), "roles": len(cfg["roles"])}

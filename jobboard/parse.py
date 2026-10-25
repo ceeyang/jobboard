@@ -121,6 +121,7 @@ _VISA_YES = re.compile(
     r"|we (?:will )?(?:can )?sponsor|sponsorship (?:available|offered|provided|possible)|blue card|skilled worker visa"
     r"|\blmia\b|h-?1b (?:sponsor|transfer|support)|visumsponsoring|visum(?:s)?unterst|aufenthaltstitel[^.\n]{0,30}(?:unterst|übernehm)"
     r"|签证(?:担保|支持|办理|协助)|办理(?:工作)?签证|提供(?:工作)?签证|包办签证|协助办理签证|担保签证|visa\s*(?:包|办理|支持)", re.I)
+_NEGATED_BEFORE = re.compile(r"(?:\bno\b|\bnot\b|n't\b|\bwithout\b|\bnever\b|\bunable\b|\bcannot\b|\bnor\b)\s*(?:\w+\s+){0,6}$", re.I)      # a comma or full stop ends the reach of the negation
 _RELOCATION = re.compile(r"relocation|relocate|umzug|搬迁|安家费|落地支持", re.I)
 
 
@@ -131,9 +132,13 @@ def visa_flag(text: str) -> str:
         return ""
     if _VISA_NO.search(text):
         return ""
-    if _VISA_YES.search(text):
-        return "yes"
-    return "maybe" if _RELOCATION.search(text) else ""
+    for m in _VISA_YES.finditer(text):
+        if not _NEGATED_BEFORE.search(text[max(0, m.start() - 48):m.start()]):   # "We do not provide visa assistance" is a no
+            return "yes"
+    for m in _RELOCATION.finditer(text):
+        if not _NEGATED_BEFORE.search(text[max(0, m.start() - 48):m.start()]):
+            return "maybe"
+    return ""
 
 
 def risks(text: str) -> list[str]:

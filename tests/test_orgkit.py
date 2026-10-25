@@ -92,3 +92,11 @@ def test_engine_readme_points_at_the_organisation_not_the_original_author(tmp_pa
     capsys.readouterr()
     readme = (tmp_path / "engine/README.md").read_text(encoding="utf-8")
     assert "**Aggregate site: https://devopenings.github.io/devopenings/**" in readme and "ceeyang.com" not in readme.split("\n## ")[0]
+
+
+def test_sites_know_their_own_address(tmp_path, capsys):
+    cli.main(["org-render", "--org", "devopenings", "--engine-repo", "devopenings", "--out", str(tmp_path), "--presets", "backend"])
+    capsys.readouterr()
+    assert json.loads((tmp_path / "engine/config/site.json").read_text()) == {"site_url": "https://devopenings.github.io/devopenings/",
+                                                                           "sites_base": "https://devopenings.github.io"}
+    assert "JOBBOARD_SITE_URL: https://devopenings.github.io/backend/" in (tmp_path / "backend/.github/workflows/update.yml").read_text(encoding="utf-8")

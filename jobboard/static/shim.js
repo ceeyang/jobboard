@@ -39,7 +39,7 @@
         "（实测通常每 2–6 小时一次），页面右上角会显示上次更新时间。想找<b>雇主担保签证</b>的岗位，打开左侧「只看雇主担保签证」" +
         "（根据岗位正文判断，申请前请向雇主确认）。感兴趣/已投等标记只保存在你当前的浏览器里。</div><button>知道了</button>";
       box.querySelector("button").onclick = () => { write("jb-pub-intro", true); box.remove(); };
-      const anchor = document.querySelector("#stats");
+      const anchor = document.querySelector("#overview") || document.querySelector("#stats");   // right under the tabs
       anchor?.parentNode.insertBefore(box, anchor);
     };
     data("meta").then(m => show(m.site || { title: "公开版岗位看板", description: "" })).catch(() => show({ title: "公开版岗位看板", description: "" }));

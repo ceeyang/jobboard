@@ -4,11 +4,14 @@ original posting. What is never published: contact handles/e-mails, full texts, 
 Telegram. A final self-check fails the build if an e-mail or @handle is still present."""
 import html
 import json
+import os
 import re
 import shutil
 import time
 from datetime import datetime, timedelta, timezone
+from email.utils import format_datetime
 from pathlib import Path
+from xml.sax.saxutils import escape as xml_escape
 
 from jobboard import db, mode, parse, profile_config, roles
 
@@ -92,18 +95,147 @@ def _count_chats(jobs: list[dict]) -> dict[int, int]:
     return counts
 
 
+# ---- site configuration (where the site lives) ---------------------------------------------------------------
+def site_config(use_file: bool = True) -> dict:
+    """{"site_url": "https://host/path/", "sites_base": "https://host"}: lets the feeds carry absolute links and the overview link
+    to the role sites. Environment variables win over config/site.json (a role site must not inherit the engine's own URL)."""
+    cfg: dict = {}
+    f = ROOT.parent / "config" / "site.json"
+    if use_file and f.exists():
+        try:
+            cfg = json.loads(f.read_text(encoding="utf-8"))
+        except ValueError:
+            cfg = {}
+    for key, env in (("site_url", "JOBBOARD_SITE_URL"), ("sites_base", "JOBBOARD_SITES_BASE")):
+        if os.environ.get(env):
+            cfg[key] = os.environ[env]
+    return cfg
+
+
+# ---- the overview page: numbers computed once at export time ----------------------------------------------------
+STATS_NOTE = "统计只反映本站收集到的来源和时间窗口内的岗位，不代表整个招聘市场；各来源的回填深度不同，趋势仅供参考。"
+
+
+def _eff_ts(j: dict, now_ts: float) -> float:
+    """When it was posted, as a number. Sources that only know the day (stored as 00:00 UTC) count as 'some time that day'."""
+    t = db._ts(j["posted_at"]) or 0.0
+    return min(t + 86399, now_ts) if str(j["posted_at"]).endswith("T00:00:00+00:00") else t
+
+
+def _families(cfg: dict | None, sites_base: str | None) -> list[dict] | None:
+    """For the aggregate profile: group its roles into the role families that have their own site."""
+    if not cfg or cfg.get("name") != "all-tech":
+        return None
+    from jobboard import orgkit
+    out = []
+    for name in orgkit.PROFILE_PRESETS:
+        pr = profile_config.validate(profile_config.load_preset(name))
+        label = re.sub(r"\s*(岗位)?看板$", "", pr["site"]["title"])
+        out.append({"key": name, "label": label, "keys": {r["key"] for r in pr["roles"]}, "url": f"{sites_base.rstrip('/')}/{name}/" if sites_base else None})
+    return out
+
+
+def compute_stats(jobs: list[dict], now: datetime, cfg: dict | None, chips: list[dict], level: int, sites_base: str | None = None) -> dict:
+    now_ts = now.timestamp()
+    eff = {j["id"]: _eff_ts(j, now_ts) for j in jobs}
+    n = len(jobs)
+    week = sum(now_ts - eff[j["id"]] < 7 * 86400 for j in jobs)
+    prev = sum(7 * 86400 <= now_ts - eff[j["id"]] < 14 * 86400 for j in jobs)
+    totals = {"jobs": n, "new_24h": sum(now_ts - eff[j["id"]] < 86400 for j in jobs), "new_7d": week, "prev_7d": prev,
+              "remote_pct": round(100 * sum(1 for j in jobs if j["remote"]) / n) if n else 0,
+              "visa_yes": sum(1 for j in jobs if j["visa"] == "yes"), "sources": len({s["chat"] for j in jobs for s in j["sources"]})}
+    fams = _families(cfg, sites_base)
+    if fams:
+        items = [{"key": f["key"], "label": f["label"], "url": f["url"], "count": sum(1 for j in jobs if f["keys"] & set(j["tags"]))} for f in fams]
+        dist = {"title": "方向分布", "kind": "families", "items": sorted(items, key=lambda i: -i["count"])}
+    else:
+        label = {c["key"]: c["label"] for c in chips}
+        cnt: dict[str, int] = {}
+        for j in jobs:
+            for t in set(j["tags"]):
+                cnt[t] = cnt.get(t, 0) + 1
+        dist = {"title": "方向分布", "kind": "roles", "items": [{"key": k, "label": label.get(k, k), "url": None, "count": v}
+                                                              for k, v in sorted(cnt.items(), key=lambda kv: -kv[1])[:14]]}
+    today = now.date()
+    daily = [{"date": (today - timedelta(days=d)).isoformat(),
+              "count": sum(1 for j in jobs if datetime.fromtimestamp(eff[j["id"]], timezone.utc).date() == today - timedelta(days=d))} for d in range(13, -1, -1)]
+    label_of = {c["key"]: c["label"] for c in chips}
+    picks, per_role, per_company = [], {}, set()
+    for window in (2, 7):      # the last two days first; widen if a quiet period leaves fewer than eight
+        for j in sorted((j for j in jobs if j["score"] >= level and now_ts - eff[j["id"]] < window * 86400 and j["id"] not in {p["id"] for p in picks}),
+                        key=lambda j: (-j["score"], -eff[j["id"]])):
+            role, comp = (j["tags"] or ["-"])[0], (j["company"] or "").lower()
+            if per_role.get(role, 0) >= 2 or (comp and comp in per_company):
+                continue                                    # variety: at most two per role, one per company
+            picks.append({"id": j["id"], "title": j["title"], "company": j["company"], "location": j["location"], "remote": j["remote"],
+                          "visa": j["visa"], "score": j["score"], "posted_at": j["posted_at"], "url": j["sources"][0]["url"],
+                          "source": j["sources"][0]["chat"], "tags": [label_of.get(t, t) for t in dict.fromkeys(j["tags"])][:3]})
+            per_role[role] = per_role.get(role, 0) + 1
+            per_company.add(comp)
+            if len(picks) == 8:
+                break
+        if len(picks) == 8:
+            break
+    by_company: dict[str, list[dict]] = {}
+    for j in jobs:
+        c = (j["company"] or "").strip()
+        if j["visa"] == "yes" and c and "/" not in c and c != j["sources"][0]["chat"]:
+            by_company.setdefault(c, []).append(j)
+    employers = [{"company": c, "count": len(js), "jobs": [{"id": x["id"], "title": x["title"], "url": x["sources"][0]["url"]} for x in
+                                                          sorted(js, key=lambda x: -eff[x["id"]])[:3]]}
+                 for c, js in sorted(by_company.items(), key=lambda kv: (-len(kv[1]), kv[0].lower()))[:15]]
+    kind_label = {"site": "招聘网站", "gov": "政府就业服务", "github": "GitHub 招聘仓库", "telegram": "Telegram 频道"}
+    mix = [{"key": k, "label": kind_label[k], "count": sum(1 for j in jobs if any(s["kind"] == k for s in j["sources"]))} for k in kind_label]
+    return {"generated_at": now.isoformat(), "totals": totals, "distribution": dist, "daily": daily, "picks": picks,
+            "visa_employers": employers, "source_mix": [m for m in mix if m["count"]], "note": STATS_NOTE}
+
+
+# ---- feeds ----------------------------------------------------------------------------------------------------------
+def write_feeds(out: Path, jobs: list[dict], now: datetime, site: dict, site_url: str, level: int, limit: int = 100) -> int:
+    now_ts = now.timestamp()
+    items = sorted((j for j in jobs if j["score"] >= level), key=lambda j: -_eff_ts(j, now_ts))[:limit]
+    base = site_url or "./"
+    title = lambda j: f"{j['company']}: {j['title']}" if j["company"] and j["company"] != j["title"] else j["title"]
+    rss = ['<?xml version="1.0" encoding="UTF-8"?>', '<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom"><channel>',
+           f"<title>{xml_escape(site['title'])}</title><link>{xml_escape(base)}</link>",
+           f"<description>{xml_escape(site.get('description') or site['title'])}</description><language>zh-CN</language>",
+           f"<lastBuildDate>{format_datetime(now)}</lastBuildDate>"]
+    if site_url:
+        rss.append(f'<atom:link href="{xml_escape(site_url)}feed.xml" rel="self" type="application/rss+xml"/>')
+    for j in items:
+        when = datetime.fromtimestamp(_eff_ts(j, now_ts), timezone.utc)
+        rss.append(f"<item><title>{xml_escape(title(j))}</title><link>{xml_escape(j['sources'][0]['url'])}</link>"
+                   f'<guid isPermaLink="false">{j["id"]}</guid><pubDate>{format_datetime(when)}</pubDate>'
+                   f"<description>{xml_escape(j['text'])}</description>"
+                   + "".join(f"<category>{xml_escape(t)}</category>" for t in dict.fromkeys(j["tags"])) + "</item>")
+    rss.append("</channel></rss>")
+    (out / "feed.xml").write_text("\n".join(rss), encoding="utf-8")
+    feed = {"version": "https://jsonfeed.org/version/1.1", "title": site["title"], "home_page_url": base,
+            "description": site.get("description") or site["title"], "language": "zh-CN",
+            **({"feed_url": site_url + "feed.json"} if site_url else {}),
+            "items": [{"id": str(j["id"]), "url": j["sources"][0]["url"], "title": title(j), "content_text": j["text"],
+                       "date_published": datetime.fromtimestamp(_eff_ts(j, now_ts), timezone.utc).isoformat(), "tags": list(dict.fromkeys(j["tags"]))}
+                      for j in items]}
+    (out / "feed.json").write_text(json.dumps(feed, ensure_ascii=False), encoding="utf-8")
+    return len(items)
+
+
 def write_site(out: str | Path, jobs: list[dict], *, now: datetime, window_days: int, site: dict, chats: list[dict],
-               chips: list[dict], state: list[dict], extra_meta: dict | None = None) -> dict:
-    """Write the static site (page, shim, paged data files). Both `export` (from the database) and `build` (from another
-    site's feed) end here, so the privacy self-check below applies to everything that is ever published."""
+               chips: list[dict], state: list[dict], extra_meta: dict | None = None, cfg: dict | None = None,
+               levels: dict | None = None, site_cfg: dict | None = None) -> dict:
+    """Write the static site (page, shim, overview, feeds, paged data files). Both `export` (from the database) and `build`
+    (from another site's feed) end here, so the privacy self-check below applies to everything that is ever published."""
     out = Path(out)
     (out / "data").mkdir(parents=True, exist_ok=True)
+    levels = levels or {"recommended": 5, "strict": 10}
+    site_cfg = site_cfg if site_cfg is not None else site_config()
     # best matches first: the first chunk is what the default view (recommended level, "most relevant") needs
     jobs = sorted(jobs, key=lambda j: (-j["score"], -(db._ts(j["posted_at"]) or 0)))
     chunks = [jobs[i:i + CHUNK] for i in range(0, len(jobs), CHUNK)] or [[]]
     for stale in (out / "data").glob("jobs-*.json"):
         stale.unlink()
-    blob = json.dumps({"jobs": jobs}, ensure_ascii=False)
+    stats = compute_stats(jobs, now, cfg, chips, levels["recommended"], site_cfg.get("sites_base"))
+    blob = json.dumps({"jobs": jobs, "stats": stats}, ensure_ascii=False)
     leaks = [m.group(0) for m in (_EMAIL.search(blob), _HANDLE.search(re.sub(r"https?://\S+", "", blob))) if m]
     if leaks:
         raise RuntimeError(f"refusing to publish: contact data found in export ({leaks[0]!r})")
@@ -111,23 +243,33 @@ def write_site(out: str | Path, jobs: list[dict], *, now: datetime, window_days:
     (out / "data/jobs.json").write_text(json.dumps(head, ensure_ascii=False), encoding="utf-8")      # index + first chunk
     for i, c in enumerate(chunks[1:], 1):
         (out / f"data/jobs-{i}.json").write_text(json.dumps({"jobs": c}, ensure_ascii=False), encoding="utf-8")
+    (out / "data/stats.json").write_text(json.dumps(stats, ensure_ascii=False), encoding="utf-8")
+    site_url = (site_cfg.get("site_url") or "").rstrip("/") + "/" if site_cfg.get("site_url") else ""
+    feed_items = write_feeds(out, jobs, now, site, site_url, levels["recommended"])
     counts = _count_chats(jobs)
     chats = sorted(({**c, "jobs": counts.get(c["chat_id"], 0)} for c in chats), key=lambda c: (-c["jobs"], c["title"]))
     (out / "data/channels.json").write_text(json.dumps({"chats": chats}, ensure_ascii=False), encoding="utf-8")
     (out / "data/roles.json").write_text(json.dumps({"roles": chips}, ensure_ascii=False), encoding="utf-8")
     meta = {"generated_at": now.isoformat(), "jobs": len(jobs), "chunks": len(chunks), "window_days": window_days, "sources": state,
-            "site": site, **(extra_meta or {})}
+            "site": site, "levels": levels, "feed_items": feed_items, **(extra_meta or {})}
     (out / "data/meta.json").write_text(json.dumps(meta, ensure_ascii=False), encoding="utf-8")
     page = (ROOT / "templates/app.html").read_text(encoding="utf-8")
-    page = page.replace("<script>\nconst STATUS=", '<script src="shim.js"></script>\n<script>\nconst STATUS=', 1)
+    page = page.replace("<script>\nconst STATUS=", '<script src="shim.js"></script>\n<script src="overview.js"></script>\n<script>\nconst STATUS=', 1)
     page = page.replace("function nextRunText(m,next){", "function nextRunText(m,next){if(window.JB_STATIC)return window.JB_STATIC.label();", 1)
     title_html = html.escape(site["title"])
-    page = page.replace("<title>岗位看板</title>", f"<title>{title_html}</title>", 1)
+    page = page.replace("<title>岗位看板</title>", f'<title>{title_html}</title>\n<link rel="alternate" type="application/rss+xml" title="{title_html}" href="feed.xml">', 1)
     page = page.replace('<span class="bname">岗位看板</span>', f'<span class="bname">{title_html}</span>', 1)
+    rec, strict = levels["recommended"], levels["strict"]
+    for old, new in (('const LEVELS=[[1,"宽松"],[5,"推荐"],[10,"严格"]];', f'const LEVELS=[[1,"宽松"],[{rec},"推荐"],[{strict},"严格"]];'),
+                     ('status:"all",min:5,since:""', f'status:"all",min:{rec},since:""')):
+        if old not in page:
+            raise RuntimeError("app.html changed: the level patch points no longer match")
+        page = page.replace(old, new, 1)
     if 'src="shim.js"' not in page or "JB_STATIC" not in page:
         raise RuntimeError("app.html changed: the static-site patch points no longer match")
     (out / "index.html").write_text(page, encoding="utf-8")
     shutil.copy(ROOT / "static/shim.js", out / "shim.js")
+    shutil.copy(ROOT / "static/overview.js", out / "overview.js")
     (out / ".nojekyll").write_text("")
     return meta
 
@@ -148,7 +290,8 @@ def export(con, out: str | Path, now: datetime | None = None, window_days: int =
     state = [{"name": r["name"], "last_count": r["last_count"], "ok": not r["last_error"], "error": (r["last_error"] or "")[:120]}
              for r in con.execute("SELECT name, last_count, last_error FROM source_state ORDER BY name")]
     site = (cfg or {}).get("site") or {"title": "岗位看板", "description": ""}
-    return write_site(out, jobs, now=now, window_days=window_days, site=site, chats=chats, chips=chips, state=state)
+    return write_site(out, jobs, now=now, window_days=window_days, site=site, chats=chats, chips=chips, state=state, cfg=cfg,
+                      levels=(cfg or {}).get("levels"))
 
 
 # ---- build a site from another site's feed (what the profile repositories do) ---------------------------------
@@ -188,4 +331,5 @@ def build_from_feed(base: str, out: str | Path, cfg: dict, now: datetime | None 
     meta = feed["meta"]
     return write_site(out, kept, now=datetime.fromisoformat(feed["generated_at"]), window_days=meta.get("window_days", WINDOW_DAYS),
                       site=cfg["site"], chats=feed["channels"], chips=profile_config.roles_for_ui(cfg), state=meta.get("sources", []),
+                      cfg=cfg, levels=cfg["levels"], site_cfg=site_config(use_file=False),
                       extra_meta={"feed": {"jobs": len(feed["jobs"]), "kept": len(kept), "built_at": (now or datetime.now(timezone.utc)).isoformat()}})

@@ -7,7 +7,8 @@ It lives in config/profile.json - start from a preset with `jobboard init --pres
      "generic_title": "engineer|developer|...",   # what counts as a generic developer title
      "exclude_title": ["front-?end", "sales"],    # titles matching these never get rescued by tags
      "stack_mismatch": [], "stack_safe_roles": [], "stack_safe_title": "",   # optional: cap the score when the title names another stack
-     "search_terms": 6}                 # how many English keywords sources with a search box (EURES, Sweden, ...) are asked for
+     "search_terms": 6,                 # how many English keywords sources with a search box (EURES, Sweden, ...) are asked for
+     "levels": {"recommended": 5, "strict": 10}}   # the score at which the page's "recommended" and "strict" buttons cut (a site with many roles scores higher: raise them)
 
 Everything is plain data; no code changes are needed to point a site at another kind of job."""
 import json
@@ -98,7 +99,15 @@ def validate(cfg: dict) -> dict:
         raise ValueError("search_terms must be a whole number from 1 to 40")
     if not 1 <= n_terms <= 40:
         raise ValueError("search_terms must be a whole number from 1 to 40")
+    lv = cfg.get("levels") or {}
+    try:
+        rec, strict = int(lv.get("recommended", 5)), int(lv.get("strict", 10))
+    except (TypeError, ValueError):
+        raise ValueError("levels.recommended and levels.strict must be whole numbers")
+    if not 2 <= rec < strict <= 20:
+        raise ValueError("levels: need 2 <= recommended < strict <= 20 (the page's buttons are 'loose' = 1, 'recommended', 'strict')")
     return {"name": str(cfg.get("name") or ""), "site": {"title": title, "description": desc}, "roles": out, "search_terms": n_terms,
+            "levels": {"recommended": rec, "strict": strict},
             "specific_roles": list(cfg.get("specific_roles") or []), "generic_title": generic,
             "exclude_title": _regex_list(cfg, "exclude_title"), "stack_mismatch": _regex_list(cfg, "stack_mismatch"),
             "stack_safe_roles": list(cfg.get("stack_safe_roles") or []), "stack_safe_title": safe_title}

@@ -15,7 +15,8 @@ python3 -m jobboard.cli presets                       # frontend, mobile, backen
 python3 -m jobboard.cli init --preset backend         # writes config/profile.json
 python3 -m jobboard.cli profile --try "Senior Go Engineer" "Sales Manager"     # check your keywords on real titles
 ```
-Three ways to deploy (fork and scrape yourself / a light repo that reads an aggregate site's feed / your own organisation with an
+The site opens on an **overview** (new today, where the jobs are, 14-day trend, who sponsors visas) with the full list one tab away, and
+every site publishes an **RSS / JSON feed** of its newest recommended jobs. Three ways to deploy (fork and scrape yourself / a light repo that reads an aggregate site's feed / your own organisation with an
 aggregate site plus one site per role): **[docs/FORK.md](docs/FORK.md)**.
 The local edition (this README) additionally reads your private Telegram groups, LinkedIn and key-based APIs.
 

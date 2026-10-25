@@ -589,5 +589,9 @@
  "stack_mismatch": [],
  "stack_safe_roles": [],
  "stack_safe_title": "",
- "search_terms": 30
+ "search_terms": 30,
+ "levels": {
+  "recommended": 12,
+  "strict": 14
+ }
 }

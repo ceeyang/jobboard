@@ -21,6 +21,11 @@ def isolated(tmp_path, monkeypatch):
     ("公司提供签证担保，可协助办理工作签证", "yes"),
     ("Employer has applied for an LMIA", "yes"),
     ("Relocation package included", "maybe"),
+    ("We do not provide visa assistance, and our cooperation model does not include benefits", ""),
+    ("Sorry, we don't offer visa support or relocation", ""),
+    ("We cannot provide visa sponsorship", ""),
+    ("no worries, visa sponsorship available", "yes"),
+    ("Visa assistance provided for the right candidate", "yes"),
     ("No visa sponsorship is available for this role", ""),
     ("Unfortunately we are unable to sponsor visas", ""),
     ("Candidates must have the right to work in the UK. Relocation not offered", ""),
@@ -123,3 +128,28 @@ def test_canada_marks_lmia_jobs(isolated):
 def test_gov_sources_registered_with_unique_ids():
     ids = [s[1] for s in run.all_sources()]
     assert len(set(ids)) == len(ids) and {"Germany (BA)", "Sweden (AF)", "EURES (EU)", "Canada Job Bank"} <= {s[0] for s in run.all_sources()}
+
+
+def test_visa_flags_are_rebuilt_once_when_the_rules_change(tmp_path, monkeypatch):
+    monkeypatch.setattr(db, "HOME", tmp_path / "h2")
+    con = db.connect()
+    item = {"id": 1, "url": "https://x/1", "title": "Flutter Developer", "company": "Acme", "location": "Berlin", "tags": [], "salary": None,
+            "text": "We do not provide visa assistance.", "date": "2026-10-20T00:00:00+00:00", "remote": False}
+    a, t, s = run.to_job(item, "X", -9)
+    assert a["visa"] == ""
+    db.upsert(con, a, t, s)
+    con.execute("UPDATE jobs SET visa='yes'")                                      # an old wrong flag, written by the previous rules
+    con.execute("DELETE FROM settings WHERE key='visa_rules'")
+    con.commit()
+    assert db.connect().execute("SELECT visa FROM jobs").fetchone()[0] == ""       # cleared by the migration ...
+    db.upsert(con, *run.to_job(dict(item, id=2, text="Relocation package included."), "Y", -10))
+    con.commit()
+    assert db.connect().execute("SELECT visa FROM jobs").fetchone()[0] == "maybe"  # ... and a later sighting can set it again
+    db.upsert(con, *run.to_job(dict(item, id=3, text="Visa sponsorship available."), "Z", -11))
+    con.commit()
+    assert db.connect().execute("SELECT visa FROM jobs").fetchone()[0] == "yes"
+    db.upsert(con, *run.to_job(dict(item, id=4, text="Relocation package included."), "W", -12))
+    con.commit()
+    assert db.connect().execute("SELECT visa FROM jobs").fetchone()[0] == "yes"   # a "maybe" never downgrades a "yes"
+    db.connect()
+    assert db.connect().execute("SELECT visa FROM jobs").fetchone()[0] == "yes"   # the migration runs only once
