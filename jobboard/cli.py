@@ -53,15 +53,25 @@ def main(argv=None):
             if not a.no_web:
                 from jobboard.sources import run as web
                 if not a.only:      # keep the company registry growing: links found in stored jobs, seed list when empty
+                    con = db.connect()
                     try:
-                        con = db.connect()
                         empty = not con.execute("SELECT 1 FROM companies LIMIT 1").fetchone()
                         out["discover"] = discover_run(con, ("db", "seed") if empty else ("db",))
                     except Exception as exc:  # discovery is a bonus, never a reason to skip the fetch
+                        con.rollback()
                         out["discover"] = {"error": f"{type(exc).__name__}: {exc}"[:160]}
+                    finally:
+                        con.close()      # no connection of this step may outlive it (an open one locks the database)
                 if public and not a.only:   # public channels listed in config/telegram_channels.txt, via their web preview
                     from jobboard.sources import telegram_public
-                    out["telegram_public"] = telegram_public.run(db.connect())
+                    tcon = db.connect()
+                    try:
+                        out["telegram_public"] = telegram_public.run(tcon)
+                    except Exception as exc:  # one broken step must not stop the sources after it
+                        tcon.rollback()
+                        out["telegram_public"] = {"error": f"{type(exc).__name__}: {exc}"[:160]}
+                    finally:
+                        tcon.close()
                 out["web"] = web.run(only=set(a.only.split(",")) if a.only else None, force=a.force,
                                      mode="public" if public else None)
                 if public:   # the database itself is committed to a public branch: keep only excerpts + links in it

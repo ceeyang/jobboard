@@ -21,6 +21,7 @@ _URLS = [
     ("recruitee", re.compile(r"([a-z0-9][a-z0-9-]{1,60})\.recruitee\.com", re.I)),
     ("personio", re.compile(r"([a-z0-9][a-z0-9-]{1,60})\.jobs\.personio\.(?:de|com)", re.I)),
 ]
+_SLUG = re.compile(r"[a-z0-9][a-z0-9._-]{0,60}")      # what can be part of a board URL; spaces etc. are text noise
 _NOT_SLUGS = {"embed", "v1", "api", "www", "jobs", "careers", "boards", "static", "assets", "images", "img", "cdn", "app"}
 _PAIR = re.compile(r"^\s*(greenhouse|lever|ashby|recruitee|personio)\s*[:=,]\s*([\w.-]+)\s*$", re.I | re.M)
 SEED = {
@@ -40,7 +41,7 @@ def extract(text: str) -> set[tuple[str, str]]:
     for ats, rx in _URLS:
         for m in rx.findall(text or ""):
             slug = urllib.parse.unquote(m).lower().strip("/.-_")
-            if slug and slug not in _NOT_SLUGS:
+            if slug and slug not in _NOT_SLUGS and _SLUG.fullmatch(slug):
                 found.add((ats, slug))
     return found
 
@@ -108,7 +109,7 @@ def probe(ats: str, slug: str, get_json=None, get_text=None) -> tuple[bool, str 
         if ats == "web":
             page = gt(slug)
             return bool(jsonld.extract_postings(page) or jsonld.job_links(page, slug)), None
-    except (urllib.error.URLError, ValueError, KeyError, TypeError, OSError, http.RateLimited):
+    except Exception:   # any network/parse problem (InvalidURL, IncompleteRead, odd JSON ...) just means "not a usable board"
         return False, None
     return False, None
 
@@ -132,13 +133,17 @@ def run(con=None, channels=("db", "seed", "commoncrawl"), file: str | None = Non
         return c, probe_fn(*c)
 
     added = invalid = 0
-    with ThreadPoolExecutor(workers) as ex:
-        for (ats, slug), (ok, name) in ex.map(check, todo):
-            if ok:
-                added += db.company_add(con, ats, slug, name)
-                db.company_result(con, ats, slug, True, name)
-            else:
-                invalid += 1
-    con.commit()
+    try:
+        with ThreadPoolExecutor(workers) as ex:
+            for (ats, slug), (ok, name) in ex.map(check, todo):
+                if ok:
+                    added += db.company_add(con, ats, slug, name)
+                    db.company_result(con, ats, slug, True, name)
+                else:
+                    invalid += 1
+        con.commit()
+    except BaseException:
+        con.rollback()      # a failed discovery must not keep the database locked for the steps after it
+        raise
     total = {r["ats"]: r["n"] for r in con.execute("SELECT ats, COUNT(*) n FROM companies WHERE active=1 GROUP BY ats")}
     return {"candidates": per_channel, "probed": len(todo), "added": added, "invalid": invalid, "registry": total}

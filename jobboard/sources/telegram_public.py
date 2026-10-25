@@ -6,7 +6,6 @@ the public site (see mode.py); the posts keep their link back to t.me/<channel>/
 import html
 import re
 import time
-import urllib.error
 import zlib
 
 from jobboard import db, mode, parse
@@ -80,7 +79,8 @@ def run(con=None, channels: list[str] | None = None, get_text=None, sleep=time.s
         except http.RateLimited:
             stats["failed"].append(f"{username}: rate limited, stopped")
             break
-        except (urllib.error.URLError, OSError, ValueError) as exc:
+        except Exception as exc:          # one odd channel (bad HTML, timeout, ...) must not stop the others
+            con.rollback()
             stats["failed"].append(f"{username}: {type(exc).__name__}")
             continue
         finally:

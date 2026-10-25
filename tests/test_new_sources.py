@@ -375,3 +375,45 @@ def test_search_terms_come_from_enabled_roles(isolated):
     assert terms[:2] == ["flutter", "dart"] and "ios" in terms and all(t.isascii() for t in terms)
     isolated.execute("UPDATE roles SET enabled=0 WHERE key='flutter'")
     assert "flutter" not in roles.search_terms(isolated, 6)
+
+
+# ---- regressions: the "database is locked" crash that silently froze the public site ----------------------
+def test_slugs_with_spaces_are_not_boards():
+    found = discover.extract("see https://jobs.ashbyhq.com/solana%20foundation and https://jobs.lever.co/real-co/abc")
+    assert ("ashby", "solana foundation") not in found and ("lever", "real-co") in found
+
+
+def test_probe_never_raises(monkeypatch):
+    import http.client as hc
+    for exc in (hc.InvalidURL("bad url"), hc.IncompleteRead(b""), RuntimeError("x"), http.RateLimited("429")):
+        def boom(url, *a, **kw):
+            raise exc
+        assert discover.probe("ashby", "x", get_json=boom, get_text=boom) == (False, None)
+
+
+def test_failed_discovery_does_not_keep_the_database_locked(isolated):
+    a, t, s = job("Flutter Dev", iso(1), n=1)
+    t += "\nhttps://jobs.lever.co/realco/1"
+    db.upsert(isolated, a, t, s)
+    isolated.commit()
+
+    def explode(ats_, slug):
+        raise RuntimeError("probe blew up")
+    with pytest.raises(RuntimeError):
+        discover.run(isolated, channels=("db",), probe_fn=explode, pace=0)
+    assert not isolated.in_transaction                                  # rolled back, nothing left open
+    other = db.connect()                                                # a second connection can write at once
+    other.execute("INSERT INTO settings(key,value) VALUES('probe','1')")
+    other.commit()
+
+
+def test_one_broken_fetch_step_does_not_stop_the_rest(isolated, monkeypatch, capsys):
+    from jobboard import cli
+    from jobboard.sources import run as run_mod, telegram_public
+    monkeypatch.setattr(cli, "discover_run", lambda con, ch: (_ for _ in ()).throw(RuntimeError("discover broke")))
+    monkeypatch.setattr(telegram_public, "run", lambda con: (_ for _ in ()).throw(RuntimeError("telegram broke")))
+    monkeypatch.setattr(run_mod, "run", lambda **kw: {"RemoteOK": {"fetched": 1}})
+    cli.main(["fetch", "--mode", "public", "--no-telegram"])
+    out = json.loads(capsys.readouterr().out)
+    assert "discover broke" in out["discover"]["error"] and "telegram broke" in out["telegram_public"]["error"]
+    assert out["web"] == {"RemoteOK": {"fetched": 1}} and "scrubbed" in out                          # the sources and the scrub still ran
