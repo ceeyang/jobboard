@@ -141,7 +141,9 @@ def main(argv=None):
                                      mode="public" if public else None)
                 if public:   # the database itself is committed to a public branch: keep only excerpts + links in it
                     from jobboard import publish
-                    out["scrubbed"] = publish.scrub_db(db.connect())
+                    pcon = db.connect()
+                    out["pruned"] = db.prune(pcon)
+                    out["scrubbed"] = publish.scrub_db(pcon)
             print(json.dumps(out, ensure_ascii=False, indent=1))
         elif a.cmd == "digest":
             from jobboard import notify

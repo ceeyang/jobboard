@@ -14,6 +14,7 @@ from jobboard.sources.adapters import plain
 
 FIRST_PAGES, NEXT_PAGES, GAP = 3, 4, 1.5      # pages of 20 posts: first run goes back a little, later runs only fetch what is new
 MIN_TEXT = 15                                  # same rule as the Telethon reader: tiny posts are not job ads
+MIN_SCORE = 1                                  # posts that match none of the profile's roles are not stored (keeps the public database small)
 
 
 def chat_id_for(username: str) -> int:
@@ -51,6 +52,8 @@ def read_channel(con, username: str, get_text, sleep) -> dict:
             if p["id"] <= last or len(p["text"]) < MIN_TEXT or not p["date"]:
                 continue
             a = parse.analyze(p["text"])
+            if a["score"] < MIN_SCORE:        # chatter, ads for something else: the public database keeps only what matches a role
+                continue
             new += db.upsert(con, a, p["text"], {"chat": title, "chat_id": cid, "msg_id": p["id"], "date": p["date"],
                                                  "url": f"https://t.me/{username}/{p['id']}"})
         oldest = min(p["id"] for p in posts)

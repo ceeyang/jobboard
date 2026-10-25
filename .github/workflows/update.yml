@@ -21,7 +21,7 @@ permissions:
 jobs:
   build:
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    timeout-minutes: 45      # the very first run reads every public channel and company board from scratch (~15 min); later runs take a few
     env:
       JOBBOARD_HOME: ${{ github.workspace }}/state
       PYTHONPATH: ${{ github.workspace }}

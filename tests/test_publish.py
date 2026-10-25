@@ -173,3 +173,11 @@ def test_export_is_split_into_chunks_best_matches_first(isolated, tmp_path, monk
     scores = [j["score"] for j in everything]
     assert scores == sorted(scores, reverse=True)                  # best matches come first, so the first chunk is what the default view needs
     assert json.loads((site / "data/meta.json").read_text(encoding="utf-8"))["chunks"] == head["chunks"]
+
+
+def test_prune_drops_only_old_jobs(isolated):
+    now = datetime.now(timezone.utc)
+    put(isolated, "Flutter Dev old", (now - timedelta(days=90)).isoformat(), msg=1)
+    put(isolated, "Flutter Dev recent", (now - timedelta(days=5)).isoformat(), msg=2)
+    assert db.prune(isolated, 60) == 1
+    assert [r["title"] for r in isolated.execute("SELECT title FROM jobs")] == ["Flutter Dev recent"]

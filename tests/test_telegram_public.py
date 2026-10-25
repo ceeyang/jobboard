@@ -101,3 +101,10 @@ def test_only_listed_public_channels_reach_the_public_site(isolated, tmp_path, m
         assert secret not in blob
     chans = json.loads((tmp_path / "site/data/channels.json").read_text(encoding="utf-8"))["chats"]
     assert [c["username"] for c in chans] == ["listed"] and chans[0]["url"] == "https://t.me/listed"
+
+
+def test_posts_matching_no_role_are_not_stored(isolated):
+    chat = page("chat", "Chat", [post("chat", 1, "Good morning everyone, what a lovely day for a long walk outside"),
+                                  post("chat", 2, "Flutter Developer wanted, remote, apply by message please")])
+    r = tp.run(isolated, ["chat"], lambda u: chat if u.endswith("/chat") else page("chat", "Chat", []), sleep=lambda s: None)
+    assert r["new_jobs"] == 1 and isolated.execute("SELECT COUNT(*) FROM jobs").fetchone()[0] == 1
