@@ -139,9 +139,11 @@ def test_visa_flags_are_rebuilt_once_when_the_rules_change(tmp_path, monkeypatch
     assert a["visa"] == ""
     db.upsert(con, a, t, s)
     con.execute("UPDATE jobs SET visa='yes'")                                      # an old wrong flag, written by the previous rules
+    con.execute("INSERT INTO source_state(name,last_run,last_count) VALUES('X', 12345, 1)")
     con.execute("DELETE FROM settings WHERE key='visa_rules'")
     con.commit()
     assert db.connect().execute("SELECT visa FROM jobs").fetchone()[0] == ""       # cleared by the migration ...
+    assert db.connect().execute("SELECT last_run FROM source_state WHERE name='X'").fetchone()[0] == 0   # ... and every source is due again
     db.upsert(con, *run.to_job(dict(item, id=2, text="Relocation package included."), "Y", -10))
     con.commit()
     assert db.connect().execute("SELECT visa FROM jobs").fetchone()[0] == "maybe"  # ... and a later sighting can set it again

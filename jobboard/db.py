@@ -26,7 +26,7 @@ CREATE TABLE IF NOT EXISTS companies(   -- boards the ATS adapters walk; ats='we
 CREATE INDEX IF NOT EXISTS jobs_score ON jobs(score DESC, posted_at DESC);
 """
 SINCE_DAYS = {"1d": 1, "3d": 3, "7d": 7, "30d": 30}   # board time-range buttons
-VISA_RULES = "2"        # bump when the visa/relocation rules change: stored flags are cleared once and rebuilt by the next fetch
+VISA_RULES = "3"        # bump when the visa/relocation rules change: stored flags are cleared once and every source re-reads at its next fetch
 MAX_FAILS = 5                                         # consecutive failures before a company board is deactivated
 
 
@@ -43,6 +43,7 @@ def connect(path: str | Path | None = None) -> sqlite3.Connection:
     done = con.execute("SELECT value FROM settings WHERE key='visa_rules'").fetchone()
     if not done or json.loads(done["value"]) != VISA_RULES:    # e.g. "We do not provide visa assistance" used to be read as a yes
         con.execute("UPDATE jobs SET visa='' WHERE visa!=''")
+        con.execute("UPDATE source_state SET last_run=0")      # ignore the per-source minimum intervals once, so the flags come back at the next fetch
         con.execute("INSERT INTO settings(key,value) VALUES('visa_rules',?) ON CONFLICT(key) DO UPDATE SET value=excluded.value", (json.dumps(VISA_RULES),))
     con.commit()
     return con
