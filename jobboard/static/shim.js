@@ -11,11 +11,12 @@
   const reply = (obj, status = 200) => new Response(JSON.stringify(obj), { status, headers: { "Content-Type": "application/json" } });
   const READONLY = "公开站点是只读的：请在本地版里修改（岗位方向、自动刷新、每日摘要）";
   const DAYS = { "1d": 1, "3d": 3, "7d": 7, "30d": 30 };
-  let generated = null;
+  let generated = null, all = null, total = 0, loadedChunks = 0, chunks = 1, loading = null;
 
   window.JB_STATIC = {
     label() {
       if (!generated) return "公开站点 · 正在加载…";
+      if (all && all.length < total) return `正在加载全部岗位 ${all.length} / ${total} …`;
       const h = Math.max(0, Math.round((Date.now() - new Date(generated)) / 36e5));
       return `${h < 1 ? "刚刚更新" : h + " 小时前更新"} · 自动更新（GitHub 定时不保证准点）`;
     },
@@ -46,6 +47,24 @@
   try {   // first visit: show the Telegram channel group expanded (the page folds it by default)
     if (!localStorage.getItem("jb2")) localStorage.setItem("jb2", JSON.stringify({ closed: { telegram: false } }));
   } catch (e) {}
+  // Paged loading: the first chunk (best matches) is enough to show the page; the rest arrives in the background and the
+  // page re-reads /api/jobs as chunks land, so search and filters become complete without blocking the first paint.
+  async function firstChunk() {
+    if (all) return;
+    const d = await data("jobs");
+    generated = d.generated_at; total = d.total ?? d.jobs.length; chunks = d.chunks ?? 1; all = d.jobs.slice(); loadedChunks = 1;
+    if (chunks > 1) loading = loadRest();
+  }
+  async function loadRest() {
+    let last = 0;
+    for (let i = 1; i < chunks; i++) {
+      try {
+        const c = await real(BASE + `data/jobs-${i}.json`, { cache: "no-cache" }).then(r => r.json());
+        all.push(...c.jobs); loadedChunks++;
+      } catch (e) { break; }
+      if (Date.now() - last > 600 || i === chunks - 1) { last = Date.now(); if (window.load) window.load().catch(() => {}); }
+    }
+  }
   const settings = () => ({ refresh_minutes: 60, digest_enabled: false, digest_time: "09:00", saved_searches: read(KQ, []),
                             next_fetch_at: null, min_refresh: 5, readonly: true });
 
@@ -55,14 +74,13 @@
     if (!m) return real(input, init);
     const path = m[1], method = (init.method || "GET").toUpperCase();
     if (method === "GET" && path === "jobs") {
-      const d = await data("jobs");
-      generated = d.generated_at;
+      await firstChunk();
       const min = +url.searchParams.get("min_score") || 1, limit = +url.searchParams.get("limit") || 500;
       const since = DAYS[url.searchParams.get("since")], st = read(KS, {});
       const cut = since ? Date.now() - since * 864e5 : 0;
-      const jobs = d.jobs.filter(j => j.score >= min && (!cut || new Date(j.posted_at) >= cut))
+      const jobs = all.filter(j => j.score >= min && (!cut || new Date(j.posted_at) >= cut))
         .slice(0, limit).map(j => ({ ...j, status: st[j.id] || "new" }));
-      return reply({ jobs, sync: { running: false, failed: false, last_job_seen: d.generated_at, refresh_minutes: 60, next_fetch_at: null } });
+      return reply({ jobs, sync: { running: false, failed: false, last_job_seen: generated, refresh_minutes: 60, next_fetch_at: null } });
     }
     if (method === "GET" && path === "chats") return reply(await data("channels"));
     if (method === "GET" && path === "roles") return reply(await data("roles"));

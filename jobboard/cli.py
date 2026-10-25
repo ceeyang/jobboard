@@ -33,6 +33,10 @@ def main(argv=None):
     dc.add_argument("--file", help="text file with ATS links, `ats:slug` lines or career-page URLs")
     dc.add_argument("--no-commoncrawl", action="store_true", help="skip the Common Crawl index (slow, often overloaded)")
     dc.add_argument("--max", type=int, default=2000, help="probe at most this many new candidates")
+    bd = sub.add_parser("build", help="build a site from another site's feed, re-scored with this profile (no scraping)")
+    bd.add_argument("--feed", required=True, help="URL of the feed's data folder (https://<org>.github.io/jobboard/data) or a local folder")
+    bd.add_argument("--profile", default=None, help="profile file (default config/profile.json)")
+    bd.add_argument("--out", default="site")
     sub.add_parser("presets", help="list the ready-made profiles (front-end, back-end, mobile, data/AI, ...)")
     ini = sub.add_parser("init", help="create config/profile.json from a preset, then edit the keywords")
     ini.add_argument("--preset", required=True, help="see `jobboard presets`")
@@ -48,6 +52,14 @@ def main(argv=None):
     a = ap.parse_args(argv)
 
     try:
+        if a.cmd == "build":
+            from jobboard import publish
+            cfg = profile_config.load(a.profile)
+            if not cfg:
+                raise RuntimeError("no profile found: run `jobboard init --preset <name>` or pass --profile")
+            profile_config.apply(cfg)
+            print(json.dumps(publish.build_from_feed(a.feed, a.out, cfg), ensure_ascii=False, indent=1))
+            return
         if a.cmd == "presets":
             for n in profile_config.presets():
                 c = profile_config.validate(profile_config.load_preset(n))

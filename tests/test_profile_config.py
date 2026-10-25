@@ -140,3 +140,71 @@ def test_export_uses_the_profile_title_and_role_buttons(tmp_path):
     assert "<title>后端岗位看板</title>" in page and '<span class="bname">后端岗位看板</span>' in page
     chips = json.loads((tmp_path / "site/data/roles.json").read_text(encoding="utf-8"))["roles"]
     assert {c["key"] for c in chips} >= {"backend", "java", "go", "python"} and all(c["enabled"] for c in chips)
+
+
+# ---- aggregate feed -> profile sites -----------------------------------------------------------------------
+def _aggregate_feed(tmp_path):
+    """An aggregate site's data folder: jobs of every kind, found with the all-tech profile."""
+    use("all-tech")
+    con = db.connect()
+    titles = ["Senior Backend Engineer (Go)", "Staff Frontend Engineer (React)", "Flutter Developer", "Data Scientist", "DevOps Engineer",
+              "Product Manager", "Java Developer", "Sales Manager"]
+    for i, t in enumerate(titles, 1):
+        text = f"{t}\nAcme · Remote\n{'remote, ' * 3}\nWrite to hr@example.com or @recruiter_x"
+        a = parse.analyze(text, "", structured=True)
+        a.update(title=t, company="Acme", fingerprint=parse.fingerprint(t), remote=True, location="Remote")
+        db.upsert(con, a, text, {"chat": "RemoteOK", "chat_id": -1, "msg_id": i, "date": "2026-10-20T10:00:00+00:00", "url": f"https://r/{i}"})
+    con.commit()
+    publish.export(con, tmp_path / "agg")
+    return str(tmp_path / "agg" / "data"), con
+
+
+def test_profile_site_is_built_from_the_aggregate_feed(tmp_path):
+    feed, _ = _aggregate_feed(tmp_path)
+    pc.reset()
+    cfg = pc.validate(pc.load_preset("backend"))
+    pc.apply(cfg)
+    meta = publish.build_from_feed(feed, tmp_path / "backend-site", cfg)
+    jobs = json.loads((tmp_path / "backend-site/data/jobs.json").read_text(encoding="utf-8"))["jobs"]
+    titles = {j["title"] for j in jobs if j["score"] >= 5}
+    assert titles == {"Senior Backend Engineer (Go)", "Java Developer"}                       # this profile's jobs only
+    assert meta["site"]["title"] == "后端岗位看板" and meta["feed"]["jobs"] == 7 and meta["feed"]["kept"] == len(jobs)
+    go = next(j for j in jobs if "Go" in j["title"])
+    assert {"backend", "go"} <= set(go["tags"])                                                # re-tagged with THIS profile's roles
+    assert "hr@example.com" not in json.dumps(jobs) and "recruiter_x" not in json.dumps(jobs)
+    chips = json.loads((tmp_path / "backend-site/data/roles.json").read_text(encoding="utf-8"))["roles"]
+    assert "go" in {c["key"] for c in chips} and "flutter" not in {c["key"] for c in chips}
+
+
+def test_two_profiles_share_one_feed(tmp_path):
+    feed, _ = _aggregate_feed(tmp_path)
+    got = {}
+    for name in ("frontend", "mobile", "data-ai"):
+        pc.reset()
+        cfg = pc.validate(pc.load_preset(name))
+        pc.apply(cfg)
+        publish.build_from_feed(feed, tmp_path / name, cfg)
+        got[name] = {j["title"] for j in json.loads((tmp_path / name / "data/jobs.json").read_text(encoding="utf-8"))["jobs"] if j["score"] >= 5}
+    assert got == {"frontend": {"Staff Frontend Engineer (React)"}, "mobile": {"Flutter Developer"}, "data-ai": {"Data Scientist"}}
+
+
+def test_incomplete_feed_is_refused(tmp_path):
+    feed, _ = _aggregate_feed(tmp_path)
+    head = json.loads((tmp_path / "agg/data/jobs.json").read_text(encoding="utf-8"))
+    head["total"] += 5                                                                        # a chunk went missing
+    (tmp_path / "agg/data/jobs.json").write_text(json.dumps(head), encoding="utf-8")
+    pc.reset()
+    cfg = pc.validate(pc.load_preset("backend"))
+    with pytest.raises(RuntimeError, match="incomplete feed"):
+        publish.build_from_feed(feed, tmp_path / "out", cfg)
+
+
+def test_build_command(tmp_path, capsys):
+    feed, _ = _aggregate_feed(tmp_path)
+    pc.reset()
+    prof = tmp_path / "profile.json"
+    cli.main(["init", "--preset", "frontend", "--out", str(prof)])
+    capsys.readouterr()
+    cli.main(["build", "--feed", feed, "--profile", str(prof), "--out", str(tmp_path / "site")])
+    out = json.loads(capsys.readouterr().out)
+    assert out["site"]["title"] == "前端岗位看板" and (tmp_path / "site/index.html").exists()

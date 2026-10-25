@@ -153,3 +153,23 @@ def test_reposted_job_shows_first_and_last_appearance(isolated, tmp_path):
     j = json.loads((tmp_path / "site/data/jobs.json").read_text())["jobs"][0]
     assert j["posted_at"] < j["last_posted"] and j["last_posted"].endswith("+00:00")
     assert db.post_times(j["posted_at"], [{"date": j["posted_at"]}, {"date": (now - timedelta(days=9.9)).isoformat()}])[1] is None   # <1 day apart: no second date
+
+
+# ---- paged data files ------------------------------------------------------------------------------------
+def test_export_is_split_into_chunks_best_matches_first(isolated, tmp_path, monkeypatch):
+    monkeypatch.setattr(publish, "CHUNK", 2)
+    for i, title in enumerate(["Flutter Dev A", "Flutter Dev B", "Android Dev C", "Senior Software Engineer D", "iOS Dev E"], 1):
+        put(isolated, title, f"2026-10-2{i}T10:00:00+00:00", msg=i)
+    site = tmp_path / "site"
+    (site / "data").mkdir(parents=True)
+    (site / "data/jobs-9.json").write_text("{}")                    # a leftover from an earlier, bigger export
+    publish.export(isolated, site)
+    head = json.loads((site / "data/jobs.json").read_text(encoding="utf-8"))
+    assert head["chunk_size"] == 2 and head["chunks"] == len(list(site.glob("data/jobs-*.json"))) + 1 and not (site / "data/jobs-9.json").exists()
+    rest = [json.loads((site / f"data/jobs-{i}.json").read_text(encoding="utf-8"))["jobs"] for i in range(1, head["chunks"])]
+    everything = head["jobs"] + [j for c in rest for j in c]
+    assert head["total"] == len(everything) and len({j["id"] for j in everything}) == len(everything)
+    assert len(head["jobs"]) == 2 and all(len(c) <= 2 for c in rest)
+    scores = [j["score"] for j in everything]
+    assert scores == sorted(scores, reverse=True)                  # best matches come first, so the first chunk is what the default view needs
+    assert json.loads((site / "data/meta.json").read_text(encoding="utf-8"))["chunks"] == head["chunks"]
