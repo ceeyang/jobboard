@@ -468,7 +468,7 @@ function card(j){
       <div class="meta">${j.company?`<span>🏢 ${esc(j.company)}</span>`:""}${j.salary?`<span class="sal">💰 ${esc(j.salary)}</span>`:""}${j.remote?"<span>🏠 远程</span>":""}${geo}${visa}<span title="${esc(dateOnly(j)?"来源只提供日期："+posted.toLocaleDateString([],{timeZone:"UTC"}):posted.toLocaleString())+(j.last_posted?"；最近一次出现 "+utc(j.last_posted).toLocaleString():"")}">🕒 ${whenText(j)}${j.last_posted?` · 重发 ${ago(utc(j.last_posted))}`:""}</span></div></div>
     ${actionsHtml(j)}
     <div class="body">
-      <div class="tags">${j.tags.map(t=>`<span class="tag" style="--c:${tagColor(t)}">${esc(lab(t))}</span>`).join("")}</div>
+      <div class="tags">${[...new Set(j.tags)].map(t=>`<span class="tag" style="--c:${tagColor(t)}">${esc(lab(t))}</span>`).join("")}</div>
       <div class="row">📣 ${srcPills(j.sources)}</div>
       <div class="row">👤 ${contacts(j.contacts)}</div>
       ${j.risks.length?`<div class="warn">⚠️ <span>${j.risks.map(esc).join("；")} — 谨慎核实，不要提交证件或预付费用</span></div>`:""}
@@ -489,7 +489,7 @@ function renderDetail(keepScroll){
   const seenSrc=new Map();j.sources.forEach(s=>{if(!seenSrc.has(s.chat_id))seenSrc.set(s.chat_id,s)});
   const primary=(j.sources.find(s=>s.url)||{}).url||(j.contacts.links[0]&&(j.contacts.links[0].startsWith("http")?j.contacts.links[0]:"https://"+j.contacts.links[0]));
   const geo={worldwide:"🌍 全球可申请",restricted:"🚧 限地区",unknown:""}[j.geo]||"";
-  const facts=[["匹配度",`${j.score}（${j.tags.map(lab).join("、")||"—"}）`],["公司",j.company],["薪资",j.salary],["地点",[j.location,geo].filter(Boolean).join(" · ")],["签证",{yes:"🛂 雇主可办理担保（请向雇主确认）",maybe:"✈ 提到搬迁支持，签证未明确"}[j.visa]||""],
+  const facts=[["匹配度",`${j.score}（${[...new Set(j.tags)].map(lab).join("、")||"—"}）`],["公司",j.company],["薪资",j.salary],["地点",[j.location,geo].filter(Boolean).join(" · ")],["签证",{yes:"🛂 雇主可办理担保（请向雇主确认）",maybe:"✈ 提到搬迁支持，签证未明确"}[j.visa]||""],
     ["方式",j.remote?"远程":""],["发布",(dateOnly(j)?posted.toLocaleDateString([],{timeZone:"UTC"})+"（来源只提供日期）":posted.toLocaleString()+"（"+ago(posted)+"）")+(j.last_posted?`；最近一次出现 ${utc(j.last_posted).toLocaleString()}（${ago(utc(j.last_posted))}）`:"")]].filter(f=>f[1]);
   el.setAttribute("data-id",j.id);
   el.innerHTML=`<div class="dp-top">

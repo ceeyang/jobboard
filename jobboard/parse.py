@@ -99,15 +99,15 @@ def role_match(text: str, hint: str = "", structured: bool = False) -> tuple[int
     if not hits:
         return 0, []
     if not full:  # mentioned only in body/tags: never reaches the recommended threshold
-        return min(hits[0][0], 4), [t for _, t in hits]
+        return min(hits[0][0], 4), list(dict.fromkeys(t for _, t in hits))
     score = hits[0][0] + min(3, len(hits) - 1)
     if structured and re.search(profile.STACK_MISMATCH, head, re.I) \
             and not ({t for _, t in full} & profile.STACK_SAFE_ROLES) \
             and not re.search(profile.STACK_SAFE_TITLE, head, re.I):
-        return min(score, 4), [t for _, t in hits]  # e.g. ".NET Full-stack": not your stack
+        return min(score, 4), list(dict.fromkeys(t for _, t in hits))  # e.g. ".NET Full-stack": not your stack
     if re.search(profile.REMOTE_RE, text, re.I):
         score += 2
-    return score, [t for _, t in hits]
+    return score, list(dict.fromkeys(t for _, t in hits))
 
 
 _VISA_NO = re.compile(

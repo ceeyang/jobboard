@@ -208,3 +208,9 @@ def test_build_command(tmp_path, capsys):
     cli.main(["build", "--feed", feed, "--profile", str(prof), "--out", str(tmp_path / "site")])
     out = json.loads(capsys.readouterr().out)
     assert out["site"]["title"] == "前端岗位看板" and (tmp_path / "site/index.html").exists()
+
+
+def test_a_role_is_listed_once_even_if_title_and_site_tags_both_name_it():
+    use("backend")
+    score, tags = parse.role_match("Software Engineer AI Coding Tasks\nAskable", "dev python javascript golang java python", True)
+    assert len(tags) == len(set(tags)) and "python" in tags

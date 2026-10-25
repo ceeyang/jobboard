@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Deploy an aggregate job site plus one site per role family into a GitHub organisation.
 #
-#   scripts/deploy_org.sh <org> [--engine-repo NAME] [--dry-run] [--only backend,mobile] [--no-landing]
+#   scripts/deploy_org.sh <org> [--engine-repo NAME] [--engine-only] [--dry-run] [--only backend,mobile] [--no-landing]
 #
 # Before you run it:
 #   1. Create the organisation on github.com (Your organizations -> New). GitHub does NOT let the command line / API
@@ -18,13 +18,14 @@
 set -euo pipefail
 
 ORG="${1:-}"; shift || true
-DRY=0; ONLY=""; LANDING=1; ENGINE="jobboard"
+DRY=0; ONLY=""; LANDING=1; ENGINE="jobboard"; ENGINE_ONLY=0
 while [ $# -gt 0 ]; do
   case "$1" in
     --dry-run) DRY=1 ;;
     --only) ONLY="$2"; shift ;;
     --no-landing) LANDING=0 ;;
     --engine-repo) ENGINE="$2"; shift ;;
+    --engine-only) ENGINE_ONLY=1 ;;       # ship a fix to the engine; the role sites pick it up on their next build
     *) echo "unknown option $1" >&2; exit 2 ;;
   esac; shift
 done
@@ -93,6 +94,8 @@ if [ "$DRY" = 0 ]; then
     || { echo "the aggregate run failed: see https://github.com/$ORG/$ENGINE/actions/runs/$id" >&2; exit 1; }
   echo "   aggregate site: https://$ORG.github.io/$ENGINE/"
 fi
+
+if [ "$ENGINE_ONLY" = 1 ]; then say "engine updated; the role sites use it on their next build (or press Run workflow there)"; exit 0; fi
 
 # 2. one light repository per role family
 "$PY" -c "
