@@ -2,7 +2,14 @@ import json
 from datetime import datetime, timezone
 from types import SimpleNamespace as NS
 
+import importlib.util
+
+import pytest
+
 from jobboard import db, fetch, notify, parse
+
+# the Telegram client is an optional extra: CI (and anyone using only the public sources) does not have it
+needs_telegram = pytest.mark.skipif(importlib.util.find_spec("cli_anything") is None, reason="Telegram client not installed")
 
 FLUTTER = """远程Flutter客户端工程师
 薪资：面议
@@ -83,6 +90,7 @@ def _msg(i, text):
     return NS(id=i, message=text, date=datetime.now(timezone.utc))
 
 
+@needs_telegram
 def test_fetch_dedupes_across_channels_and_is_incremental(tmp_path, monkeypatch):
     monkeypatch.setattr(db, "HOME", tmp_path)
     con = db.connect(tmp_path / "t.db")
@@ -96,6 +104,7 @@ def test_fetch_dedupes_across_channels_and_is_incremental(tmp_path, monkeypatch)
     assert s2["new_jobs"] == 0 and {m for _, m in c.calls[-2:]} == {2, 8}  # resumed from last id
 
 
+@needs_telegram
 def test_digest_only_unnotified_matches(tmp_path, monkeypatch):
     monkeypatch.setattr(db, "HOME", tmp_path)
     con = db.connect(tmp_path / "t.db")
