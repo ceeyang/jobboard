@@ -95,8 +95,6 @@ def run(con=None, channels: list[str] | None = None, get_text=None, sleep=time.s
         else:
             stats["no_preview"].append(username)
     err = f"{len(stats['failed'])} failed: {stats['failed'][0]}" if stats["failed"] and not stats["channels"] else None
-    con.execute("INSERT INTO source_state(name,last_run,last_count,last_error) VALUES(?,?,?,?) "
-                "ON CONFLICT(name) DO UPDATE SET last_run=excluded.last_run,last_count=excluded.last_count,last_error=excluded.last_error",
-                ("Telegram (public)", now(), stats["channels"], err))
+    db.record_source(con, "Telegram (public)", stats["channels"], error=err, now=now())
     con.commit()
     return stats

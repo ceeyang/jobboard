@@ -128,6 +128,6 @@ def sources() -> list:
     out = [(PREFIX + "Rebase who-is-hiring", -30, 3 * 3600, rebase)]
     for i, (label, repo) in enumerate(SIMPLIFY.items()):
         out.append((PREFIX + label, -31 - i, 6 * 3600, lambda repo=repo: simplify(repo)))
-    for i, repo in enumerate(issue_repos()[:9]):
+    for i, repo in enumerate(issue_repos()[:12]):
         out.append((PREFIX + repo, -33 - i, 3 * 3600, lambda repo=repo: issues(repo)))
     return out

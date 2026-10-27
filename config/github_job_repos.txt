@@ -1,4 +1,4 @@
-# GitHub repositories where one open issue = one job posting (owner/repo, one per line, at most 9).
+# GitHub repositories where one open issue = one job posting (owner/repo, one per line, at most 12).
 # They appear in the "GitHub" source group. Found 2026-10-24; all had new job issues within the last weeks
 # (androiddevbr and flutterbr are small but are exactly the mobile roles).
 
@@ -12,3 +12,12 @@ backend-br/vagas
 androiddevbr/vagas
 # Flutter (very few postings)
 flutterbr/vagas
+
+# iOS / Swift / Apple platforms (CocoaHeadsBrasil also lists international roles)
+CocoaHeadsBrasil/vagas
+# QA / testing
+qa-brasil/vagas
+# Java
+soujava/vagas-java
+# PHP / Laravel
+phpdevbr/vagas

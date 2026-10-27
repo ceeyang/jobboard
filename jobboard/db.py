@@ -1,6 +1,7 @@
 import json
 import os
 import sqlite3
+import time
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
@@ -37,6 +38,10 @@ def connect(path: str | Path | None = None) -> sqlite3.Connection:
     con.row_factory = sqlite3.Row
     con.executescript(SCHEMA)
     have = {r[1] for r in con.execute("PRAGMA table_info(jobs)")}
+    have_s = {r[1] for r in con.execute("PRAGMA table_info(source_state)")}
+    for col, ddl in (("last_ok", "REAL"), ("zero_runs", "INTEGER DEFAULT 0"), ("error_runs", "INTEGER DEFAULT 0"), ("max_count", "INTEGER DEFAULT 0")):
+        if col not in have_s:    # health tracking (see jobboard/health.py)
+            con.execute(f"ALTER TABLE source_state ADD COLUMN {col} {ddl}")
     for col, ddl in (("company", "TEXT"), ("location", "TEXT"), ("geo", "TEXT DEFAULT 'unknown'"), ("hint", "TEXT DEFAULT ''"), ("visa", "TEXT DEFAULT ''")):
         if col not in have:  # lightweight migration for databases created before web sources existed
             con.execute(f"ALTER TABLE jobs ADD COLUMN {col} {ddl}")
@@ -47,6 +52,19 @@ def connect(path: str | Path | None = None) -> sqlite3.Connection:
         con.execute("INSERT INTO settings(key,value) VALUES('visa_rules',?) ON CONFLICT(key) DO UPDATE SET value=excluded.value", (json.dumps(VISA_RULES),))
     con.commit()
     return con
+
+
+def record_source(con, name: str, count: int, error: str | None = None, now: float | None = None) -> None:
+    """One run of one source: remember when it last worked and how many runs in a row failed or came back empty."""
+    now = time.time() if now is None else now
+    if error:
+        con.execute("INSERT INTO source_state(name,last_run,last_count,last_error,error_runs) VALUES(?,0,0,?,1) "
+                    "ON CONFLICT(name) DO UPDATE SET last_error=excluded.last_error, error_runs=COALESCE(error_runs,0)+1", (name, error[:200]))
+        return
+    con.execute("INSERT INTO source_state(name,last_run,last_count,last_error,last_ok,zero_runs,error_runs,max_count) VALUES(?,?,?,NULL,?,?,0,?) "
+                "ON CONFLICT(name) DO UPDATE SET last_run=excluded.last_run, last_count=excluded.last_count, last_error=NULL, "
+                "last_ok=excluded.last_ok, zero_runs=CASE WHEN excluded.last_count=0 THEN COALESCE(zero_runs,0)+1 ELSE 0 END, error_runs=0, "
+                "max_count=MAX(COALESCE(max_count,0), excluded.last_count)", (name, now, count, now, 1 if count == 0 else 0, count))
 
 
 def upsert(con, a: dict, text: str, src: dict) -> bool:

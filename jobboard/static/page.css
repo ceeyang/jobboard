@@ -1,0 +1,16 @@
+/* Plain documents of the static site (about / status). Light and dark follow the system. */
+:root{--bg:#f7f7f5;--fg:#1c1f23;--mut:#5f6670;--line:#dcdcd6;--ac:#0b6b5d;--panel:#fff}
+@media(prefers-color-scheme:dark){:root{--bg:#14171a;--fg:#e8e9ea;--mut:#9aa1a9;--line:#2b3035;--ac:#4cc2ad;--panel:#1b1f23}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.65 system-ui,-apple-system,"Segoe UI","PingFang SC","Noto Sans SC",sans-serif}
+.doc{max-width:860px;margin:0 auto;padding:24px 16px 64px}
+.doc h1{font-size:26px;margin:12px 0 4px}.doc h2{font-size:18px;margin:32px 0 8px}
+.doc a{color:var(--ac)}.back{display:inline-block;font-size:14px;text-decoration:none}
+.lead{color:var(--mut);margin-top:0}
+.tw{overflow-x:auto;border:1px solid var(--line);border-radius:8px;background:var(--panel)}
+table{border-collapse:collapse;width:100%;font-size:14px}
+th,td{padding:8px 12px;text-align:left;border-bottom:1px solid var(--line);vertical-align:top}
+tr:last-child td{border-bottom:0}th{color:var(--mut);font-weight:600;white-space:nowrap}.num{text-align:right}
+.pill{display:inline-block;padding:1px 9px;border-radius:99px;font-size:12.5px;border:1px solid var(--line);white-space:nowrap}
+.pill.ok{color:#0f7a4f;border-color:#0f7a4f}.pill.warn{color:#a15c00;border-color:#a15c00}.pill.bad{color:#b42318;border-color:#b42318}.pill.mute{color:var(--mut)}
+@media(prefers-color-scheme:dark){.pill.ok{color:#4cd08f;border-color:#4cd08f}.pill.warn{color:#f0a13a;border-color:#f0a13a}.pill.bad{color:#ff7b72;border-color:#ff7b72}}

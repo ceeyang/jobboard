@@ -1,7 +1,7 @@
 name: update
 
 # Rebuilds this site from the aggregate feed. It runs on GitHub's schedule, which is BEST EFFORT: GitHub decides when a
-# scheduled workflow actually starts, and on a quiet repository that is usually every 2-6 hours, not every hour (the cron
+# scheduled workflow actually starts, and lately that is every 4-8 hours, not every hour (the cron
 # below only says "as often as you are willing"). Press "Run workflow" on the Actions tab for an immediate refresh.
 on:
   schedule:

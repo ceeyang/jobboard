@@ -26,18 +26,20 @@
   style.textContent = "#refresh,#settingsBtn{display:none!important}" +
     ".intro{display:flex;gap:12px;align-items:flex-start;margin:4px 0 14px;padding:12px 14px;border:1px solid var(--line);" +
     "background:var(--panel);border-radius:var(--r);font-size:13px;line-height:1.55;color:var(--mut)}" +
-    ".intro b{color:var(--fg)}.intro button{margin-left:auto;flex:none;border:1px solid var(--line);background:transparent;" +
+    ".intro a{color:var(--ac)}.intro b{color:var(--fg)}.intro button{margin-left:auto;flex:none;border:1px solid var(--line);background:transparent;" +
     "color:var(--fg);border-radius:8px;padding:4px 10px;cursor:pointer;font-size:12.5px}";
   document.head.appendChild(style);
   document.addEventListener("DOMContentLoaded", () => {
+    const theme = document.querySelector("#theme");   // always available: where the data comes from, how fresh it is, how to ask for removal
+    if (theme) theme.insertAdjacentHTML("beforebegin", '<a class="btn ico" href="about.html" title="数据来源、更新频率、下架申请">关于</a>');
     if (read("jb-pub-intro", false)) return;
     const box = document.createElement("div");
     box.className = "intro";
     const show = (site) => {
       box.innerHTML = `<div><b>${site.title}</b>：${site.description || "公开岗位的聚合看板。"}` +
         "这里只显示摘要和<b>原帖链接</b>，申请请点开原帖。数据由 GitHub Actions <b>自动更新</b>，但 GitHub 的定时触发<b>并不准点</b>" +
-        "（实测通常每 2–6 小时一次），页面右上角会显示上次更新时间。想找<b>雇主担保签证</b>的岗位，打开左侧「只看雇主担保签证」" +
-        "（根据岗位正文判断，申请前请向雇主确认）。感兴趣/已投等标记只保存在你当前的浏览器里。</div><button>知道了</button>";
+        "（实测近期通常每 4–8 小时一次），页面右上角会显示上次更新时间。想找<b>雇主担保签证</b>的岗位，打开左侧「只看雇主担保签证」" +
+        "（根据岗位正文判断，申请前请向雇主确认）。感兴趣/已投等标记只保存在你当前的浏览器里。<a href=\"about.html\">数据来源与状态</a></div><button>知道了</button>";
       box.querySelector("button").onclick = () => { write("jb-pub-intro", true); box.remove(); };
       const anchor = document.querySelector("#overview") || document.querySelector("#stats");   // right under the tabs
       anchor?.parentNode.insertBefore(box, anchor);

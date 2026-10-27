@@ -52,6 +52,7 @@ def main(argv=None):
     pr.add_argument("--try", dest="titles", nargs="*", metavar="TITLE", help="job titles to score, e.g. --try \"Senior Go Engineer\"")
     pr.add_argument("--path", default=None)
     sub.add_parser("reanalyze", help="re-score stored jobs after editing profile.py")
+    sub.add_parser("health", help="check every source; exit code 1 if one is broken (used by the workflow to raise an alert)")
     s = sub.add_parser("serve", help="run the web board")
     s.add_argument("--port", type=int, default=8765)
     a = ap.parse_args(argv)
@@ -162,6 +163,13 @@ def main(argv=None):
             from jobboard.sources import discover
             ch = ["db", "seed"] + ([] if a.no_commoncrawl else ["commoncrawl"]) + (["file"] if a.file else [])
             print(json.dumps(discover.run(channels=tuple(ch), file=a.file, max_probe=a.max), ensure_ascii=False, indent=1))
+        elif a.cmd == "health":
+            import time as _t
+            from jobboard import health
+            sm = health.summary(health.status_rows(db.connect(), _t.time()))
+            print(json.dumps(sm, ensure_ascii=False, indent=1))
+            if sm["alert"]:
+                sys.exit(1)
         elif a.cmd == "reanalyze":
             print(f"reanalyzed {db.reanalyze(db.connect())} jobs")
         elif a.cmd == "serve":

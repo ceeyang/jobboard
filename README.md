@@ -3,7 +3,7 @@
 **Public site: https://ceeyang.com/jobboard/** (same as ceeyang.github.io/jobboard/, which redirects there) - rebuilt automatically by GitHub Actions.
 
 > **Update frequency: automatic, but not punctual.** The workflow's cron says "every hour", but GitHub decides when a scheduled
-> workflow really starts (best effort). Measured on this repository: **2.4-5.5 hours apart, 4.3 hours on average**. Don't treat it
+> workflow really starts (best effort). Measured on this repository: **2.4-8 hours apart, about 6 hours on average lately**. Don't treat it
 > as an hourly promise. "Run workflow" on the Actions tab refreshes at once; the page shows "N hours ago" in its top bar.
 > Want a true hourly run? Call the `workflow_dispatch` API from an external timer (optional, needs a token).
 

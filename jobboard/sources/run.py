@@ -35,8 +35,8 @@ def all_sources(mode: str | None = None) -> list:
     """Every enabled job source, in the order they are fetched (cheap public feeds first, LinkedIn last).
     mode='public' keeps only the sources allowed on the public site (see jobboard/mode.py)."""
     from jobboard import mode as _mode
-    from jobboard.sources import ats, github, gov, jsonld, linkedin, more
-    every = (adapters.SOURCES + more.SOURCES + gov.SOURCES + github.sources() + ats.SOURCES + jsonld.SOURCES
+    from jobboard.sources import ats, github, gov, jsonld, linkedin, more, openfeeds
+    every = (adapters.SOURCES + more.SOURCES + openfeeds.SOURCES + gov.SOURCES + github.sources() + ats.SOURCES + jsonld.SOURCES
              + linkedin.SOURCES)
     return [s for s in every if _mode.allowed(s[0], mode)]
 
@@ -61,16 +61,12 @@ def run(con=None, only: set[str] | None = None, force: bool = False, min_score: 
                     continue
                 kept += 1
                 new += db.upsert(con, a, text, src)
-            con.execute("INSERT INTO source_state(name,last_run,last_count,last_error) VALUES(?,?,?,NULL) "
-                        "ON CONFLICT(name) DO UPDATE SET last_run=excluded.last_run,last_count=excluded.last_count,last_error=NULL",
-                        (name, now(), len(items)))
+            db.record_source(con, name, len(items), now=now())
             stats[name] = {"fetched": len(items), "matched": kept, "new": new}
         except http.Skip as why:  # e.g. API key not configured: not an error, try again next time
             stats[name] = {"skipped": str(why)}
         except Exception as exc:  # one broken site must never stop the others
-            con.execute("INSERT INTO source_state(name,last_run,last_count,last_error) VALUES(?,?,0,?) "
-                        "ON CONFLICT(name) DO UPDATE SET last_error=excluded.last_error",
-                        (name, 0, f"{type(exc).__name__}: {exc}"[:200]))
+            db.record_source(con, name, 0, error=f"{type(exc).__name__}: {exc}")
             stats[name] = {"error": f"{type(exc).__name__}: {exc}"[:120]}
         con.commit()
     return stats

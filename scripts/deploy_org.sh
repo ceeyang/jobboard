@@ -14,7 +14,7 @@
 #                          it re-filters the aggregate feed with its own keywords. No scraping, so 13 repositories do not
 #                          hit the job sites 13 times.
 #   <org>/<org>.github.io  a landing page that links to all of them
-# GitHub starts scheduled workflows whenever it likes (usually every 2-6 hours); the script also triggers a first run.
+# GitHub starts scheduled workflows whenever it likes (lately every 4-8 hours); the script also triggers a first run.
 set -euo pipefail
 
 ORG="${1:-}"; shift || true
@@ -108,6 +108,13 @@ while IFS=$'\t' read -r repo desc; do
   [ "$DRY" = 1 ] || run_workflow "$repo" >/dev/null
 done < "$WORK/profiles.tsv"
 
+# 2b. tell the engine which repositories to refresh right after each run (see refresh-role-sites in its workflow). It only
+#     acts once a secret ROLE_SITES_TOKEN exists:  gh secret set ROLE_SITES_TOKEN -R "$ORG/$ENGINE"
+#     (a fine-grained token, resource owner = the organisation, repositories = the role repos, permission Actions: read and write)
+if [ "$DRY" = 0 ]; then
+  gh variable set ROLE_REPOS -R "$ORG/$ENGINE" --body "$(cut -f1 "$WORK/profiles.tsv" | sed "s|^|$ORG/|" | tr '\n' ' ')" >/dev/null || true
+fi
+
 # 3. landing page at https://<org>.github.io/ and the text shown at github.com/<org>
 if [ "$LANDING" = 1 ]; then
   publish_dir "$WORK/landing" "$ORG.github.io" "Tech job boards by role" branch
@@ -118,4 +125,4 @@ say "done"
 echo "  aggregate : https://$ORG.github.io/$ENGINE/"
 [ "$LANDING" = 0 ] || echo "  landing   : https://$ORG.github.io/"
 echo "  role sites: https://$ORG.github.io/<role>/   (first builds take a minute or two; Pages may need a few more to appear)"
-echo "  workflows run on GitHub's own schedule (every 2-6 hours in practice); 'Run workflow' on the Actions tab refreshes at once."
+echo "  workflows run on GitHub's own schedule (every 4-8 hours in practice); 'Run workflow' on the Actions tab refreshes at once."

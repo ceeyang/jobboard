@@ -103,7 +103,7 @@ def render_landing(dest: Path, org: str, profiles: list[dict], aggregate: dict, 
             f'<title>{e(org)} · 技术岗位看板</title><style>{_CSS}</style></head><body><main>'
             f'<h1>技术岗位看板</h1><p class="lead">按方向分开的公开岗位看板，数据来自远程招聘站、企业招聘页、政府就业服务、GitHub 招聘仓库和公开的 Telegram 频道。'
             f'只显示摘要和原帖链接。</p><div class="grid">{"".join(cards)}</div>'
-            f'<footer>自动更新，但 GitHub 的定时触发不准点（通常每 2–6 小时一次），每个站点右上角会显示上次更新时间。'
+            f'<footer>自动更新，但 GitHub 的定时触发不准点（近期通常每 4–8 小时一次），每个站点右上角会显示上次更新时间。'
             f'每个方向都是一个独立仓库，只需一份关键词配置，欢迎 fork：<a href="https://github.com/{e(org)}/{e(engine_repo)}">{e(org)}/{e(engine_repo)}</a></footer>'
             f'</main></body></html>')
     dest = Path(dest)
@@ -118,7 +118,7 @@ def render_org_profile(dest: Path, org: str, profiles: list[dict], aggregate: di
     text = (f"# 技术岗位看板\n\n按方向分开的公开岗位看板：数据来自远程招聘站、企业招聘页、政府就业服务、GitHub 招聘仓库和公开的 Telegram 频道，"
             f"只显示摘要和原帖链接。\n\n**[{aggregate['title']}]({pages_url(org, engine_repo)}/)**（全部方向）　·　"
             f"[首页](https://{org}.github.io/)\n\n| 方向 | 说明 |\n|---|---|\n{rows}\n\n"
-            f"**自动更新，但不准点**：GitHub 的定时触发是尽力而为（实测每 2–6 小时一次），每个站点右上角会显示上次更新时间。\n\n"
+            f"**自动更新，但不准点**：GitHub 的定时触发是尽力而为（实测近期每 4–8 小时一次），每个站点右上角会显示上次更新时间。\n\n"
             f"想要自己的方向？每个站点就是一份关键词配置，见 [部署指南](https://github.com/{org}/{engine_repo}/blob/main/docs/FORK.md)。\n")
     (Path(dest) / "profile").mkdir(parents=True, exist_ok=True)
     (Path(dest) / "profile/README.md").write_text(text, encoding="utf-8")

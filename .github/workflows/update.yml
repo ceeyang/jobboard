@@ -1,8 +1,8 @@
 name: update
 
 # SCHEDULE: this says "every hour" (minute 17 avoids the busy top of the hour), but GitHub does NOT promise that. Scheduled
-# workflows are best effort and GitHub starts them whenever it likes: measured on this repository the runs were 2.4-5.5 hours
-# apart, 4.3 hours on average. Expect "a few times a day", not hourly. "Run workflow" on the Actions tab runs it at once.
+# workflows are best effort and GitHub starts them whenever it likes: measured on this repository the runs were 2.4-8 hours
+# apart, about 6 hours on average lately. Expect "a few times a day", not hourly. "Run workflow" on the Actions tab runs it at once.
 # Also: GitHub pauses scheduled workflows after 60 days without repository activity (keepalive.yml adds a monthly commit).
 on:
   schedule:
@@ -62,9 +62,17 @@ jobs:
           meta = json.load(open("export.json"))
           print(f"### {meta['jobs']} jobs published (last {meta['window_days']} days)\n")
           print("| source | fetched | status |\n|---|---|---|")
+          icon = {"ok": "ok", "warn": "warning", "alert": "BROKEN", "never": "never returned anything"}
           for s in meta["sources"]:
-              print(f"| {s['name']} | {s['last_count']} | {'ok' if s['ok'] else s['error']} |")
+              print(f"| {s['name']} | {s['last_count']} | {icon[s['state']]} {s['why']} |")
           PY
+
+      # A broken source must not stay unnoticed: the site is still published (the other sources are fine), then the run is
+      # marked failed in the `alert` job below so GitHub emails the repository owner.
+      - name: Check source health
+        id: health
+        run: |
+          python -m jobboard.cli health | tee health.json || echo "unhealthy=true" >> "$GITHUB_OUTPUT"
 
       - name: Fail only if everything failed
         run: |
@@ -83,6 +91,8 @@ jobs:
       - uses: actions/upload-pages-artifact@56afc609e74202658d3ffba0e8f6dda462b719fa   # v3.0.1
         with:
           path: site
+    outputs:
+      unhealthy: ${{ steps.health.outputs.unhealthy }}
 
   deploy:
     needs: build
@@ -93,3 +103,32 @@ jobs:
     steps:
       - id: deployment
         uses: actions/deploy-pages@d6db90164ac5ed86f2b6aed7e0febac5b3c0c03e        # v4.0.5
+
+  # Role sites rebuild from this site's feed on their own (random) schedule, so they can lag a whole cycle behind. When
+  # ROLE_REPOS (repository variable, space-separated "owner/repo" list) and ROLE_SITES_TOKEN (secret: a fine-grained token
+  # with Actions read/write on those repositories) exist, trigger them right after this site is live. Skipped otherwise.
+  refresh-role-sites:
+    needs: deploy
+    runs-on: ubuntu-latest
+    if: ${{ vars.ROLE_REPOS != '' }}
+    steps:
+      - name: Trigger the role sites
+        env:
+          GH_TOKEN: ${{ secrets.ROLE_SITES_TOKEN }}
+          ROLE_REPOS: ${{ vars.ROLE_REPOS }}
+        run: |
+          if [ -z "$GH_TOKEN" ]; then echo "ROLE_SITES_TOKEN is not set: role sites refresh on their own schedule"; exit 0; fi
+          sleep 45      # let the Pages CDN serve the new feed
+          for repo in $ROLE_REPOS; do
+            gh workflow run update.yml -R "$repo" && echo "triggered $repo" || echo "could not trigger $repo"
+          done
+
+  alert:
+    needs: build
+    runs-on: ubuntu-latest
+    if: ${{ needs.build.outputs.unhealthy == 'true' }}
+    steps:
+      - name: Fail so that GitHub notifies the owner
+        run: |
+          echo "::error::at least one source is broken - see the 'Check source health' step and about.html on the site"
+          exit 1

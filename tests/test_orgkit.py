@@ -23,7 +23,7 @@ def test_profile_repo_is_complete_and_has_no_placeholders_left(tmp_path):
         assert not re.search(r"__[A-Z_]+__", (tmp_path / "backend" / f).read_text(encoding="utf-8")), f
     wf = (tmp_path / "backend/.github/workflows/update.yml").read_text(encoding="utf-8")
     assert "ENGINE_REPO: devopenings/jobboard" in wf and "FEED_URL: https://devopenings.github.io/jobboard/data" in wf
-    assert "BEST EFFORT" in wf and "2-6 hours" in wf                                       # the schedule is explained where people will look
+    assert "BEST EFFORT" in wf and "4-8 hours" in wf                                       # the schedule is explained where people will look
     assert "不准点" in (tmp_path / "backend/README.md").read_text(encoding="utf-8")
     cfg = pc.validate(json.loads((tmp_path / "backend/config/profile.json").read_text(encoding="utf-8")))
     assert cfg["name"] == "backend" and info["url"] == "https://devopenings.github.io/backend/" and info["roles"] == len(cfg["roles"])

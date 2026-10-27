@@ -12,8 +12,8 @@
   body.view-overview main>:is(#tabs,.tools,#list,#sentinel){display:none!important}
   body:not(.view-overview) #overview{display:none}
   .vtabs{display:flex;gap:6px;margin:2px 0 14px}
-  .vtabs button{border:1px solid var(--line);background:var(--panel);color:var(--mut);border-radius:99px;padding:6px 16px;font-size:14px;cursor:pointer}
-  .vtabs button.on{background:var(--ac);border-color:transparent;color:#fff;font-weight:600}
+  .vtabs button{border:1px solid var(--line);background:var(--panel);color:var(--mut);border-radius:9px;padding:6px 16px;font-size:14px;cursor:pointer}
+  .vtabs button.on{background:var(--ac);border-color:var(--ac);color:var(--acfg);font-weight:600}
   body.view-overview .detail-panel,body.view-overview .dscrim{display:none!important}
   body.view-overview main{grid-column:2/-1}
   #overview{display:grid;gap:14px;max-width:1080px}
@@ -29,16 +29,17 @@
   .ov-chart{display:flex;align-items:flex-end;gap:5px;height:96px;margin-top:6px}
   .ov-chart div{flex:1;background:var(--ac);opacity:.8;border-radius:4px 4px 0 0;min-height:2px;position:relative}
   .ov-chart div.today{opacity:1}.ov-axis{display:flex;justify-content:space-between;color:var(--mut);font-size:11.5px;margin-top:4px}
-  .ov-trend{margin-top:10px;font-size:13.5px;color:var(--mut)}.ov-up{color:#12a36b}.ov-down{color:#ea580c}
+  .ov-trend{margin-top:10px;font-size:13.5px;color:var(--mut)}.ov-up{color:var(--ok)}.ov-down{color:var(--warn)}
   .ov-picks{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:10px}
-  a.ov-pick{display:block;border:1px solid var(--line);border-radius:12px;padding:11px 13px;color:var(--fg);text-decoration:none;background:var(--panel2,var(--panel))}
+  a.ov-pick{display:block;border:1px solid var(--line);border-radius:10px;padding:11px 13px;color:var(--fg);text-decoration:none;background:var(--panel2,var(--panel))}
   a.ov-pick:hover{border-color:var(--ac)}a.ov-pick b{display:block;font-size:14.5px;line-height:1.35;margin-bottom:3px}
   .ov-pick span{display:block;color:var(--mut);font-size:12.5px}.ov-tags{margin-top:6px;display:flex;gap:5px;flex-wrap:wrap}
   .ov-tags i{font-style:normal;border:1px solid var(--line);border-radius:99px;padding:1px 8px;font-size:11.5px;color:var(--mut)}
   .ov-emp details{border-top:1px solid var(--line);padding:7px 0}.ov-emp details:first-of-type{border-top:0}
   .ov-emp summary{cursor:pointer;font-size:14px}.ov-emp summary em{color:var(--mut);font-style:normal;margin-left:6px;font-size:12.5px}
   .ov-emp ul{margin:6px 0 2px 18px;padding:0;font-size:13px}.ov-emp li{margin:2px 0}.ov-emp a{color:var(--ac)}
-  .ov-btn{border:1px solid var(--line);background:var(--panel);color:var(--fg);border-radius:10px;padding:6px 12px;font-size:13px;cursor:pointer}.ov-btn:hover{border-color:var(--ac)}
+  .ov-btn{border:1px solid var(--line);background:var(--panel);color:var(--fg);border-radius:9px;padding:6px 12px;font-size:13px;cursor:pointer}.ov-btn:hover{border-color:var(--ac)}
+  .ov-feeds{margin-top:8px}.ov-feeds summary{cursor:pointer;color:var(--ac)}.ov-feeds .ov-tags{margin-top:8px}a.ov-feed{border:1px solid var(--line);border-radius:8px;padding:1px 9px;font-size:12.5px;text-decoration:none;color:var(--fg)}a.ov-feed:hover{border-color:var(--ac);color:var(--ac)}
   .ov-note{color:var(--mut);font-size:12.5px;line-height:1.6}.ov-note a{color:var(--ac)}
   @media(max-width:760px){.ov-nums{grid-template-columns:repeat(2,1fr)}.ov-cols{grid-template-columns:1fr}.ov-bar{grid-template-columns:88px 1fr 40px}}`;
   document.head.appendChild(style);
@@ -88,7 +89,9 @@
       <div class="ov-card ov-emp"><h3>愿意担保签证的雇主<small>岗位正文明确写了签证担保，或来源官方标明（如加拿大 LMIA）；申请前请向雇主确认</small></h3>${emp}
         <div style="margin-top:10px"><button class="ov-btn" data-act="visa">在岗位列表里只看担保签证 →</button></div></div>
       <div class="ov-card ov-note">${esc(st.note)}<br>
-        订阅新岗位：<a href="feed.xml">RSS</a> · <a href="feed.json">JSON Feed</a>　　<button class="ov-btn" data-act="list">浏览全部 ${num(t.jobs)} 个岗位 →</button></div>`;
+        订阅新岗位：<a href="feed.xml">全部（RSS）</a> · <a href="feed.json">JSON Feed</a>　·　<a href="about.html">数据来源与状态</a>
+        ${(st.feeds || []).length ? `<details class="ov-feeds"><summary>按方向订阅（${st.feeds.length} 个）</summary><div class="ov-tags">${st.feeds.map(f => `<a class="ov-feed" href="feeds/${esc(f.key)}.xml">${esc(f.label)}</a>`).join("")}</div></details>` : ""}
+        <div style="margin-top:10px"><button class="ov-btn" data-act="list">浏览全部 ${num(t.jobs)} 个岗位 →</button></div></div>`;
     ov.onclick = e => {
       const r = e.target.closest("[data-role]"), a = e.target.closest("[data-act]");
       if (r) toList(() => { S.roles = [r.dataset.role]; S.since = ""; });
