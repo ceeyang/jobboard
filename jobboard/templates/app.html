@@ -295,6 +295,18 @@ body.detail:not(.pinned) .dscrim{display:block;position:fixed;inset:0;background
   <div class="sec">常用搜索</div>
   <div id="savedq"></div>
 
+  <div class="sec">匹配度</div>
+  <div class="seg" id="seg" role="group" aria-label="匹配度"></div>
+
+  <div class="sec">发布时间</div>
+  <div class="seg" id="segSince" role="group" aria-label="发布时间"></div>
+
+  <div class="sec">条件</div>
+  <label class="switch">仅远程<input type="checkbox" id="fRemote"></label>
+  <label class="switch" title="只显示远程岗位，并去掉标明「仅限美国 / 仅限欧洲 / US only / 必须位于某国」等限制居住地的岗位。没写限制的算全球可申请；地点写了具体城市的不算">🌍 全球远程<input type="checkbox" id="fGeo"></label>
+  <label class="switch" title="岗位写明雇主可办理签证担保（或官方标明，如加拿大 LMIA）；明确写“不提供担保”的不算">担保签证<input type="checkbox" id="fVisa"></label>
+  <label class="switch" title="隐藏标注了「不收个人信息」「博彩」等风险的岗位">隐藏风险提示<input type="checkbox" id="fRisk"></label>
+
   <div class="sec">国家 / 地区 <button data-clear="countries" id="clrCountries" hidden>清除</button></div>
   <div id="countries"></div>
 
@@ -320,16 +332,6 @@ body.detail:not(.pinned) .dscrim{display:block;position:fixed;inset:0;background
 
   <div class="stats" id="stats"></div>
   <div class="filters" id="filters" aria-label="筛选">
-    <div class="frow">
-      <div class="fgroup"><span class="flabel">匹配度</span><div class="seg" id="seg" role="group" aria-label="匹配度"></div></div>
-      <div class="fgroup"><span class="flabel">发布时间</span><div class="seg" id="segSince" role="group" aria-label="发布时间"></div></div>
-    </div>
-    <div class="frow toggles">
-      <label class="switch">仅远程<input type="checkbox" id="fRemote"></label>
-      <label class="switch" title="只显示远程岗位，并去掉标明「仅限美国 / 仅限欧洲 / US only / 必须位于某国」等限制居住地的岗位。没写限制的算全球可申请；地点写了具体城市的不算">全球远程<input type="checkbox" id="fGeo"></label>
-      <label class="switch" title="岗位写明雇主可办理签证担保（或官方标明，如加拿大 LMIA）；明确写“不提供担保”的不算">担保签证<input type="checkbox" id="fVisa"></label>
-      <label class="switch" title="隐藏标注了「不收个人信息」「博彩」等风险的岗位">隐藏风险提示<input type="checkbox" id="fRisk"></label>
-    </div>
     <div class="frow rolesrow"><span class="flabel">方向<button data-clear="roles" id="clrRoles" hidden>清除</button></span><div class="chips" id="roles"></div></div>
   </div>
   <div class="tabs" id="tabs" role="tablist"></div>
@@ -391,7 +393,7 @@ const SORTS=[["score","最匹配"],["new","最新"]];
 const SINCES=[["","不限"],["1d","1天"],["3d","3天"],["7d","1周"],["30d","1月"]];
 const SINCE_MS={"1d":864e5,"3d":3*864e5,"7d":7*864e5,"30d":30*864e5};
 const PAGE=40,LS="jb2";
-const DEF={sideCollapsed:false,status:"all",min:5,since:"",roles:[],srcs:[],remote:false,hideRisk:false,hideGeo:false,visa:false,q:"",sort:"score",dense:false,theme:"auto",closed:{telegram:true},pin:false,countries:[]};
+const DEF={sideCollapsed:false,status:"all",min:5,since:"",roles:[],srcs:[],remote:false,hideRisk:false,hideGeo:false,visa:false,q:"",sort:"score",dense:false,theme:"auto",closed:{telegram:true,countries:true},pin:false,countries:[]};
 const $=(s,r=document)=>r.querySelector(s);
 const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 let S;try{S={...DEF,...JSON.parse(localStorage.getItem(LS)||"{}")}}catch(e){S={...DEF}}
@@ -521,9 +523,11 @@ function renderSide(){
   const clist=Object.keys(cc).sort((a,b)=>(a==="XX")-(b==="XX")||cc[b]-cc[a]||COUNTRY_NAME[a].localeCompare(COUNTRY_NAME[b],"zh"));
   S.countries.forEach(c=>{if(!clist.includes(c))clist.push(c)});                // a selected country stays visible even at 0
   const CMAX=10,cshown=countriesOpen||clist.length<=CMAX+2?clist:clist.filter((c,i)=>i<CMAX||has(S.countries,c));
-  $("#countries").innerHTML=`<div class="rows" style="margin:0">${cshown.map(c=>`<div class="srow ${has(S.countries,c)?"on":""} ${cc[c]?"":"zero"}" data-country="${c}" role="checkbox" aria-checked="${has(S.countries,c)}" tabindex="0"><span class="chk"></span><b>${esc(COUNTRY_NAME[c]||c)}</b><i>${cc[c]||0}</i><span></span></div>`).join("")}</div>`+
-    (clist.length>CMAX+2?`<button class="linkbtn" data-countriesmore style="margin:4px 6px">${countriesOpen?"收起":"更多 "+(clist.length-cshown.length)+" 个"}</button>`:"")+
-    (clist.length?"":'<div class="count" style="padding:0 8px">暂无</div>');
+  const cclosed=S.closed.countries!==false,csel=S.countries.length;
+  $("#countries").innerHTML=`<div class="grp ${cclosed?"closed":""}"><div class="ghead"><button class="chev" data-fold="countries" aria-label="展开/收起国家列表">▾</button>
+    <button class="gsel ${csel?"on":""}" data-fold="countries" title="展开 / 收起">${csel?"已选 "+csel+" 个国家":"全部国家"}<span>${clist.length}</span></button></div>
+    <div class="rows">${cshown.map(c=>`<div class="srow ${has(S.countries,c)?"on":""} ${cc[c]?"":"zero"}" data-country="${c}" role="checkbox" aria-checked="${has(S.countries,c)}" tabindex="0"><span class="chk"></span><b>${esc(COUNTRY_NAME[c]||c)}</b><i>${cc[c]||0}</i><span></span></div>`).join("")}
+    ${clist.length>CMAX+2?`<button class="linkbtn" data-countriesmore style="margin:4px 6px">${countriesOpen?"收起":"更多 "+(clist.length-cshown.length)+" 个"}</button>`:""}</div></div>`;
   $("#clrCountries").hidden=!S.countries.length;
   const base=filtered("srcs"),cnt=n=>base.filter(j=>j.sources.some(x=>x.chat===n)).length;
   const sites={},govs={},gits={};jobs.forEach(j=>j.sources.forEach(x=>{if(x.kind==="site")sites[x.chat]=1;else if(x.kind==="gov")govs[x.chat]=1;else if(x.kind==="github")gits[x.chat]=1}));
@@ -806,7 +810,7 @@ document.addEventListener("click",e=>{
   if(d.countriesmore!==undefined){countriesOpen=!countriesOpen;return renderSide()}
   if(d.sqsave!==undefined){const q=S.q.trim(),name=($("#sqname")?.value||q).trim()||q;return saveSearches([...(SET.saved_searches||[]),{name,q}])}
   if(d.closeset!==undefined){$("#settings").classList.remove("show");return}
-  if(d.fold){S.closed={...S.closed,[d.fold]:!S.closed[d.fold]};save();return renderSide()}
+  if(d.fold){const cur=d.fold==="countries"?S.closed.countries!==false:!!S.closed[d.fold];S.closed={...S.closed,[d.fold]:!cur};save();return renderSide()}   // the country list is folded unless explicitly opened
   if(d.grp){
     const names=kindNames(d.grp);
     const allOn=names.every(n=>has(S.srcs,n));S.srcs=allOn?S.srcs.filter(n=>!names.includes(n)):[...new Set([...S.srcs,...names])];return change()}
