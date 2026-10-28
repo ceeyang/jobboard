@@ -269,6 +269,22 @@ h3{font-size:16px;font-weight:650}
 .orig{border-radius:12px}
 @media(max-width:960px){.filters{padding:12px}.rolesrow{flex-wrap:wrap}.fgroup{width:100%}.fgroup .seg{flex:1}}
 @media(max-width:560px){.card{grid-template-columns:40px minmax(0,1fr);padding:14px}.av{width:40px;height:40px;grid-row:span 1}.acts{grid-column:2}}
+
+/* ======== detail panel: hidden until a job is opened; optionally pinned as a third column ======== */
+.detail-panel{position:fixed;right:0;top:0;bottom:0;width:min(620px,94vw);height:auto;z-index:25;transform:translateX(104%);transition:transform .2s ease;box-shadow:-18px 0 50px -20px rgba(0,0,0,.45);visibility:hidden}
+body.detail .detail-panel{transform:none;visibility:visible}
+body.detail:not(.pinned) .dscrim{display:block;position:fixed;inset:0;background:rgba(5,7,10,.28);z-index:22}
+.only-narrow{display:grid!important}
+.pinbtn{display:none}
+@media(min-width:1280px){
+  .app{grid-template-columns:var(--side) minmax(0,1fr)}
+  .pinbtn{display:grid}
+  body.pinned .app{grid-template-columns:var(--side) minmax(500px,6fr) minmax(340px,5fr)}
+  body.pinned .detail-panel{position:sticky;top:0;height:100vh;width:auto;transform:none;visibility:visible;box-shadow:none}
+  body.pinned .only-narrow{display:none!important}
+  body.pinned .dscrim{display:none!important}
+}
+.pinbtn.on{background:var(--acsoft);border-color:var(--ac);color:var(--ac)}
 </style>
 </head>
 <body>
@@ -372,7 +388,7 @@ const SORTS=[["score","最匹配"],["new","最新"]];
 const SINCES=[["","不限"],["1d","1天"],["3d","3天"],["7d","1周"],["30d","1月"]];
 const SINCE_MS={"1d":864e5,"3d":3*864e5,"7d":7*864e5,"30d":30*864e5};
 const PAGE=40,LS="jb2";
-const DEF={sideCollapsed:false,status:"all",min:5,since:"",roles:[],srcs:[],remote:false,hideRisk:false,hideGeo:false,visa:false,q:"",sort:"score",dense:false,theme:"auto",closed:{telegram:true}};
+const DEF={sideCollapsed:false,status:"all",min:5,since:"",roles:[],srcs:[],remote:false,hideRisk:false,hideGeo:false,visa:false,q:"",sort:"score",dense:false,theme:"auto",closed:{telegram:true},pin:false};
 const $=(s,r=document)=>r.querySelector(s);
 const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 let S;try{S={...DEF,...JSON.parse(localStorage.getItem(LS)||"{}")}}catch(e){S={...DEF}}
@@ -538,7 +554,8 @@ function originalText(j){   // job sites: drop the 3 header lines we prepended (
 }
 function renderDetail(keepScroll){
   const el=$("#detail"),j=jobs.find(x=>x.id===sel),top=keepScroll?el.scrollTop:0;
-  if(!j){el.innerHTML=`<div class="dp-empty"><div class="big">📄</div><b>选择左侧的岗位</b>这里会显示完整的原始招聘信息、联系方式和原帖链接。<br><br>用 <kbd>j</kbd> <kbd>k</kbd> 切换上一条下一条。</div>`;return}
+  const pinBtn=`<button class="ibtn pinbtn ${S.pin?"on":""}" data-pin aria-pressed="${!!S.pin}" title="${S.pin?"取消固定：详情改为点开才显示":"固定：详情一直显示在右侧"}" aria-label="固定详情栏">📌</button>`;
+  if(!j){el.innerHTML=`<div class="dp-top"><button class="ibtn only-narrow" data-closedetail aria-label="关闭详情" title="关闭 (Esc)">✕</button><span class="sp"></span>${pinBtn}</div><div class="dp-empty"><div class="big">📄</div><b>选择左侧的岗位</b>这里会显示完整的原始招聘信息、联系方式和原帖链接。<br><br>用 <kbd>j</kbd> <kbd>k</kbd> 切换上一条下一条。</div>`;return}
   const i=view.findIndex(x=>x.id===j.id),posted=utc(j.posted_at);
   const seenSrc=new Map();j.sources.forEach(s=>{if(!seenSrc.has(s.chat_id))seenSrc.set(s.chat_id,s)});
   const primary=(j.sources.find(s=>s.url)||{}).url||(j.contacts.links[0]&&(j.contacts.links[0].startsWith("http")?j.contacts.links[0]:"https://"+j.contacts.links[0]));
@@ -549,7 +566,7 @@ function renderDetail(keepScroll){
   el.innerHTML=`<div class="dp-top">
       <button class="ibtn only-narrow" data-closedetail aria-label="关闭详情" title="关闭 (Esc)">✕</button>
       <span class="count">${i>=0?`${i+1} / ${view.length}`:""}</span><span class="sp"></span>
-      <button class="ibtn" data-nav="-1" title="上一条 (k)" aria-label="上一条">↑</button><button class="ibtn" data-nav="1" title="下一条 (j)" aria-label="下一条">↓</button></div>
+      <button class="ibtn" data-nav="-1" title="上一条 (k)" aria-label="上一条">↑</button><button class="ibtn" data-nav="1" title="下一条 (j)" aria-label="下一条">↓</button>${pinBtn}</div>
     <div class="dp-body">
       <h2>${esc(j.title)}</h2>
       <dl class="facts">${facts.map(([k,v])=>`<dt>${k}</dt><dd>${esc(v)}</dd>`).join("")}</dl>
@@ -628,6 +645,7 @@ async function setStatus(id,status,withUndo=true){
 }
 function openDetail(id){setSel(id,false);document.body.classList.add("detail")}
 function closeDetail(){document.body.classList.remove("detail")}
+const applyPin=()=>document.body.classList.toggle("pinned",!!S.pin);
 function setSel(id,scroll=true){
   const changed=sel!==id;sel=id;if(changed)renderDetail(false);
   document.querySelectorAll(".card.sel").forEach(c=>c.classList.remove("sel"));
@@ -730,6 +748,7 @@ document.addEventListener("click",e=>{
   if(d.copy){navigator.clipboard?.writeText(d.copy);return toast("已复制 "+d.copy)}
   if(d.st){return setStatus(+t.closest("[data-id]").dataset.id,d.st)}
   if(d.closedetail!==undefined)return closeDetail();
+  if(d.pin!==undefined){S.pin=!S.pin;save();applyPin();if(!S.pin&&sel)document.body.classList.add("detail");return renderDetail(true)}
   if(d.nav){const i=view.findIndex(x=>x.id===sel),n=view[Math.max(0,Math.min(view.length-1,i+ +d.nav))];if(n){if(view.indexOf(n)>=limit){limit=view.indexOf(n)+PAGE;renderList()}setSel(n.id)}return}
   if(d.copytext!==undefined){const j=jobs.find(x=>x.id===sel);if(j){navigator.clipboard?.writeText(originalText(j));toast("已复制原文")}return}
   if(e.target.closest("select,summary,input,label"))return;
@@ -790,7 +809,7 @@ $("#openSide").onclick=()=>document.body.classList.add("drawer");
 $("#scrim").onclick=()=>document.body.classList.remove("drawer");
 $("#dscrim").onclick=closeDetail;
 new IntersectionObserver(es=>{if(es[0].isIntersecting&&loaded&&view.length>limit){limit+=PAGE;renderList()}},{rootMargin:"600px"}).observe($("#sentinel"));
-readHash();$("#q").value=S.q;applyTheme();applySide();renderTabs();renderList();renderDetail();
+readHash();applyPin();$("#q").value=S.q;applyTheme();applySide();renderTabs();renderList();renderDetail();
 load().catch(()=>{loaded=true;$("#list").innerHTML='<div class="empty"><b>加载失败</b>看板服务没有响应，请确认 jobboard serve 仍在运行。</div>'});
 setInterval(()=>fetch("/api/sync").then(r=>r.json()).then(setSync).catch(()=>{}),60000);
 </script>
