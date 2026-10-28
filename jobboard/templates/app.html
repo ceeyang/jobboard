@@ -295,6 +295,9 @@ body.detail:not(.pinned) .dscrim{display:block;position:fixed;inset:0;background
   <div class="sec">常用搜索</div>
   <div id="savedq"></div>
 
+  <div class="sec">国家 / 地区 <button data-clear="countries" id="clrCountries" hidden>清除</button></div>
+  <div id="countries"></div>
+
   <div class="sec">来源 <button data-clear="srcs" id="clrSrcs" hidden>清除</button></div>
   <div id="srcs"></div>
 </aside>
@@ -388,12 +391,12 @@ const SORTS=[["score","最匹配"],["new","最新"]];
 const SINCES=[["","不限"],["1d","1天"],["3d","3天"],["7d","1周"],["30d","1月"]];
 const SINCE_MS={"1d":864e5,"3d":3*864e5,"7d":7*864e5,"30d":30*864e5};
 const PAGE=40,LS="jb2";
-const DEF={sideCollapsed:false,status:"all",min:5,since:"",roles:[],srcs:[],remote:false,hideRisk:false,hideGeo:false,visa:false,q:"",sort:"score",dense:false,theme:"auto",closed:{telegram:true},pin:false};
+const DEF={sideCollapsed:false,status:"all",min:5,since:"",roles:[],srcs:[],remote:false,hideRisk:false,hideGeo:false,visa:false,q:"",sort:"score",dense:false,theme:"auto",closed:{telegram:true},pin:false,countries:[]};
 const $=(s,r=document)=>r.querySelector(s);
 const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 let S;try{S={...DEF,...JSON.parse(localStorage.getItem(LS)||"{}")}}catch(e){S={...DEF}}
 const save=()=>{try{localStorage.setItem(LS,JSON.stringify(S))}catch(e){}};
-let jobs=[],chats=[],limit=PAGE,sel=null,loaded=false,view=[],rolesOpen=false;
+let jobs=[],chats=[],limit=PAGE,sel=null,loaded=false,view=[],rolesOpen=false,countriesOpen=false;
 const has=(a,x)=>a.includes(x),toggle=(a,x)=>has(a,x)?a.filter(y=>y!==x):[...a,x];
 const kindNames=k=>[...new Set([...jobs.flatMap(j=>j.sources.filter(x=>x.kind===k).map(x=>x.chat)),...(k==="telegram"?chats.map(c=>c.title):[])])];
 const KIND_LABEL={site:"🌐 招聘网站",gov:"🏛 政府就业服务",github:"🐙 GitHub",telegram:"✈️ Telegram"};
@@ -401,6 +404,64 @@ const KIND_ICON={site:"🌐",gov:"🏛",github:"🐙",telegram:"✈️"};
 const lab=k=>(ROLES.find(r=>r[0]===k)||[0,k])[1];
 const utc=s=>new Date(String(s).includes("T")||String(s).endsWith("Z")?s:String(s).replace(" ","T")+"Z");
 function ago(d){const m=(Date.now()-d)/6e4;if(m<1)return"刚刚";if(m<60)return Math.floor(m)+" 分钟前";if(m<1440)return Math.floor(m/60)+" 小时前";const dd=Math.floor(m/1440);return dd<31?dd+" 天前":Math.floor(dd/30)+" 个月前"}
+
+
+/* ---------- countries: read from the location text (no country field exists in the data) ---------- */
+const COUNTRIES=[
+["US","美国",/united states|\busa\b|u\.s\.a?(?![a-z])|\bus\b|america|san francisco|new york|seattle|austin|boston|chicago|los angeles|denver|atlanta|silicon valley|palo alto|mountain view|san jose|san diego|portland|miami|washington,? d\.?c|michigan|california|texas|florida|virginia|ohio|colorado|arizona|oregon|massachusetts|illinois|minnesota|pennsylvania|new jersey|north carolina|utah|nevada|tennessee|maryland|wisconsin|missouri|connecticut/i],
+["CA","加拿大",/canada|toronto|vancouver|montr[eé]al|ottawa|calgary|edmonton|waterloo|\((?:ON|BC|QC|AB|MB|NS|SK)\)/i],
+["GB","英国",/united kingdom|\buk\b|england|scotland|wales|britain|northern ireland|london|manchester|edinburgh|bristol|leeds|glasgow|birmingham|cambridge, uk/i],
+["IE","爱尔兰",/ireland|dublin|cork\b/i],
+["DE","德国",/germany|deutschland|berlin|m[uü]nchen|munich|hamburg|frankfurt|k[oö]ln|cologne|stuttgart|d[uü]sseldorf|leipzig|德国/i],
+["FR","法国",/france|paris|lyon|toulouse|marseille|bordeaux|nantes|lille|nice\b|法国/i],
+["ES","西班牙",/spain|españa|madrid|barcelona|valencia|sevilla|málaga|西班牙/i],
+["PT","葡萄牙",/portugal|lisbon|lisboa|porto\b|葡萄牙/i],
+["IT","意大利",/italy|italia|milan|milano|rome\b|roma\b|turin|torino|意大利/i],
+["NL","荷兰",/netherlands|holland|amsterdam|rotterdam|utrecht|eindhoven|the hague|荷兰/i],
+["BE","比利时",/belgium|belgi[eë]|brussels|bruxelles|antwerp|ghent/i],
+["LU","卢森堡",/luxembourg/i],
+["CH","瑞士",/switzerland|schweiz|suisse|z[uü]rich|geneva|gen[eè]ve|basel|bern\b|lausanne|瑞士/i],
+["AT","奥地利",/austria|[oö]sterreich|vienna|wien\b|graz|salzburg|linz/i],
+["SE","瑞典",/sweden|sverige|stockholm|gothenburg|g[oö]teborg|malm[oö]|uppsala|瑞典/i],
+["NO","挪威",/norway|norge|oslo|bergen|trondheim/i],
+["DK","丹麦",/denmark|danmark|copenhagen|k[oø]benhavn|aarhus/i],
+["FI","芬兰",/finland|suomi|helsinki|espoo|tampere|芬兰/i],
+["PL","波兰",/poland|polska|warsaw|warszawa|krak[oó]w|wroc[lł]aw|gda[nń]sk|poznań|波兰/i],
+["CZ","捷克",/czech|prague|praha|brno/i],
+["SK","斯洛伐克",/slovakia|bratislava/i],
+["HU","匈牙利",/hungary|budapest/i],
+["RO","罗马尼亚",/romania|bucharest|cluj/i],
+["BG","保加利亚",/bulgaria|sofia\b/i],
+["GR","希腊",/greece|athens|thessaloniki/i],
+["HR","克罗地亚",/croatia|zagreb/i],
+["RS","塞尔维亚",/serbia|belgrade/i],
+["SI","斯洛文尼亚",/slovenia|ljubljana/i],
+["EE","爱沙尼亚",/estonia|tallinn/i],["LV","拉脱维亚",/latvia|riga\b/i],["LT","立陶宛",/lithuania|vilnius/i],
+["UA","乌克兰",/ukraine|kyiv|kiev|lviv/i],["RU","俄罗斯",/russia|moscow|saint petersburg/i],["TR","土耳其",/turkey|t[uü]rkiye|istanbul|ankara/i],
+["IL","以色列",/israel|tel aviv|jerusalem/i],["AE","阿联酋",/\buae\b|united arab emirates|dubai|abu dhabi|迪拜|阿联酋/i],["SA","沙特",/saudi|riyadh/i],["EG","埃及",/egypt|cairo/i],
+["ZA","南非",/south africa|cape town|johannesburg/i],["NG","尼日利亚",/nigeria|lagos|abuja/i],["KE","肯尼亚",/kenya|nairobi/i],["MA","摩洛哥",/morocco|casablanca/i],
+["IN","印度",/india\b|bangalore|bengaluru|mumbai|delhi|hyderabad|pune\b|chennai|gurgaon|gurugram|noida|印度/i],["PK","巴基斯坦",/pakistan|karachi|lahore/i],["BD","孟加拉",/bangladesh|dhaka/i],["LK","斯里兰卡",/sri lanka|colombo/i],
+["CN","中国大陆",/china|中国|北京|上海|深圳|杭州|广州|廣州|成都|南京|武汉|西安|苏州|beijing|shanghai|shenzhen|hangzhou|guangzhou|chengdu/i],["HK","香港",/hong kong|香港/i],["TW","台湾",/taiwan|台湾|台灣|taipei|台北|新竹|台中|高雄/i],
+["JP","日本",/japan|日本|tokyo|osaka|yokohama|横浜|橫濱|大阪|东京|東京|福岡|fukuoka|京都|kyoto/i],["KR","韩国",/korea|seoul|韩国|首尔/i],
+["SG","新加坡",/singapore|新加坡/i],["MY","马来西亚",/malaysia|kuala lumpur|马来西亚|吉隆坡|penang/i],["TH","泰国",/thailand|bangkok|泰国|曼谷|chiang mai/i],["VN","越南",/vietnam|viet nam|hanoi|ho chi minh|saigon|越南/i],
+["ID","印度尼西亚",/indonesia|jakarta|bali\b|印尼/i],["PH","菲律宾",/philippines|manila|cebu|菲律宾/i],["KH","柬埔寨",/cambodia|phnom penh|柬埔寨/i],
+["AU","澳大利亚",/australia|sydney|melbourne|brisbane|perth\b|canberra|adelaide|澳大利亚|澳洲/i],["NZ","新西兰",/new zealand|auckland|wellington|新西兰/i],
+["BR","巴西",/brazil|brasil|s[aã]o paulo|rio de janeiro|belo horizonte|curitiba|porto alegre|bras[ií]lia|florian[oó]polis|campinas|recife|fortaleza|巴西/i],
+["MX","墨西哥",/mexico|m[eé]xico|cidade do m[eé]xico|guadalajara|monterrey|墨西哥/i],["AR","阿根廷",/argentina|buenos aires|c[oó]rdoba, ar/i],["CL","智利",/chile|santiago/i],
+["CO","哥伦比亚",/colombia|bogot[aá]|medell[ií]n/i],["PE","秘鲁",/peru\b|lima\b/i],["UY","乌拉圭",/uruguay|montevideo/i],["CR","哥斯达黎加",/costa rica/i],["PA","巴拿马",/panama/i]
+];
+const COUNTRY_NAME=Object.fromEntries(COUNTRIES.map(c=>[c[0],c[1]]));
+Object.assign(COUNTRY_NAME,{WW:"🌍 全球远程（不限地区）",EU:"欧洲（区域）",XX:"未标注地区"});
+const US_STATE=/,\s*(?:AL|AK|AZ|AR|CA|CO|CT|DE|FL|GA|HI|ID|IL|IN|IA|KS|KY|LA|ME|MD|MA|MI|MN|MS|MO|MT|NE|NV|NH|NJ|NM|NY|NC|ND|OH|OK|OR|PA|RI|SC|SD|TN|TX|UT|VT|VA|WA|WV|WI|WY|DC)\b/;
+function countryOf(j){
+  if(j._cn)return j._cn;
+  const find=t=>{const out=[];if(!t)return out;for(const [c,,re] of COUNTRIES)if(re.test(t))out.push(c);if(!out.includes("US")&&US_STATE.test(t))out.push("US");return out};
+  let cs=find(j.location);
+  if(!cs.length)cs=find(j.title);                       // "Developer (Remote, Brazil)", "日本橫濱 前端工程師"
+  if(!cs.length&&/europe|emea|\beu\b|欧洲/i.test(j.location||""))cs=["EU"];
+  if(!cs.length)cs=[globalRemote(j)||/^\s*(remote|remoto|work remotely|anywhere|worldwide|global)\b/i.test(j.location||"")?"WW":"XX"];
+  return j._cn=cs;
+}
 
 /* ---------- filtering ---------- */
 let _pq={q:null,v:null};
@@ -427,6 +488,7 @@ function match(j,s,skip){
   if(skip!=="status"&&(s.status==="all"?j.status==="ignored":j.status!==s.status))return false;
   if(s.roles.length&&!j.tags.some(t=>has(s.roles,t)))return false;
   if(skip!=="srcs"&&s.srcs.length&&!j.sources.some(x=>has(s.srcs,x.chat)))return false;
+  if(skip!=="countries"&&s.countries&&s.countries.length&&!countryOf(j).some(c=>has(s.countries,c)))return false;
   if(s.remote&&!j.remote)return false;
   if(s.hideRisk&&j.risks.length)return false;
   if(s.hideGeo&&!globalRemote(j))return false;
@@ -455,6 +517,14 @@ function renderSide(){
   const sq=SET.saved_searches||[],cur=S.q.trim(),already=sq.some(x=>x.q===cur);
   $("#savedq").innerHTML=(sq.length?`<div class="chips">${sq.map((x,i)=>`<span class="chipbtn ${S.q===x.q?"on":""}" data-sq="${i}" role="button" tabindex="0" title="${esc(x.q)}">${esc(x.name)}<b class="x" data-sqdel="${i}" aria-label="删除" title="删除">×</b></span>`).join("")}</div>`:'<div class="count" style="padding:0 6px;font-size:12.5px">在搜索框输入关键词，可保存为常用搜索</div>')+
     (cur&&!already?`<div class="saveq"><input id="sqname" placeholder="名称" value="${esc(cur.slice(0,14))}" maxlength="30" aria-label="常用搜索名称"><button data-sqsave>保存</button></div>`:"");
+  const cbase=filtered("countries"),cc={};cbase.forEach(j=>countryOf(j).forEach(c=>cc[c]=(cc[c]||0)+1));
+  const clist=Object.keys(cc).sort((a,b)=>(a==="XX")-(b==="XX")||cc[b]-cc[a]||COUNTRY_NAME[a].localeCompare(COUNTRY_NAME[b],"zh"));
+  S.countries.forEach(c=>{if(!clist.includes(c))clist.push(c)});                // a selected country stays visible even at 0
+  const CMAX=10,cshown=countriesOpen||clist.length<=CMAX+2?clist:clist.filter((c,i)=>i<CMAX||has(S.countries,c));
+  $("#countries").innerHTML=`<div class="rows" style="margin:0">${cshown.map(c=>`<div class="srow ${has(S.countries,c)?"on":""} ${cc[c]?"":"zero"}" data-country="${c}" role="checkbox" aria-checked="${has(S.countries,c)}" tabindex="0"><span class="chk"></span><b>${esc(COUNTRY_NAME[c]||c)}</b><i>${cc[c]||0}</i><span></span></div>`).join("")}</div>`+
+    (clist.length>CMAX+2?`<button class="linkbtn" data-countriesmore style="margin:4px 6px">${countriesOpen?"收起":"更多 "+(clist.length-cshown.length)+" 个"}</button>`:"")+
+    (clist.length?"":'<div class="count" style="padding:0 8px">暂无</div>');
+  $("#clrCountries").hidden=!S.countries.length;
   const base=filtered("srcs"),cnt=n=>base.filter(j=>j.sources.some(x=>x.chat===n)).length;
   const sites={},govs={},gits={};jobs.forEach(j=>j.sources.forEach(x=>{if(x.kind==="site")sites[x.chat]=1;else if(x.kind==="gov")govs[x.chat]=1;else if(x.kind==="github")gits[x.chat]=1}));
   const defs=[
@@ -501,6 +571,7 @@ function renderActive(){
     if(names.length&&names.every(n=>has(S.srcs,n))){f.push(["grp:"+k,KIND_LABEL[k]+"（全部）"]);rest=rest.filter(n=>!names.includes(n))}
   }
   rest.forEach(r=>f.push(["src:"+r,r.length>14?r.slice(0,13)+"…":r]));
+  S.countries.forEach(c=>f.push(["country:"+c,COUNTRY_NAME[c]||c]));
   if(S.remote)f.push(["remote","仅远程"]);if(S.hideRisk)f.push(["risk","隐藏风险"]);if(S.hideGeo)f.push(["geo","全球远程"]);if(S.visa)f.push(["visa","担保签证"]);
   $("#active").innerHTML=f.map(([k,t])=>`<button class="af" data-rm="${esc(k)}" aria-label="移除筛选 ${esc(t)}">${esc(t)} <span>✕</span></button>`).join("")+(f.length>1?`<button class="clear" data-clearall>清除全部</button>`:"");
 }
@@ -690,7 +761,7 @@ function applySide(){
 const toggleSide=()=>{S.sideCollapsed=!S.sideCollapsed;save();applySide()};
 const applyTheme=()=>{if(S.theme==="auto")document.documentElement.removeAttribute("data-theme");else document.documentElement.setAttribute("data-theme",S.theme)};
 /* The filters live in the address (#q=flutter&r=ios,android&min=5&since=7d&remote=1&visa=1): a search can be shared or bookmarked. */
-const SHARE_KEYS=[["q","q","s"],["roles","r","a"],["srcs","src","a"],["min","min","n"],["since","since","s"],["sort","sort","s"],["remote","remote","b"],["hideGeo","geo","b"],["visa","visa","b"],["hideRisk","risk","b"]];
+const SHARE_KEYS=[["q","q","s"],["roles","r","a"],["srcs","src","a"],["countries","c","a"],["min","min","n"],["since","since","s"],["sort","sort","s"],["remote","remote","b"],["hideGeo","geo","b"],["visa","visa","b"],["hideRisk","risk","b"]];
 function hashOf(){
   const p=new URLSearchParams();
   for(const [k,n,t] of SHARE_KEYS){const v=S[k];if(JSON.stringify(v)===JSON.stringify(DEF[k]))continue;p.set(n,t==="a"?v.join(","):t==="b"?"1":v)}
@@ -699,7 +770,7 @@ function hashOf(){
 function readHash(){
   const h=location.hash.replace(/^#\??/,"");if(!h)return;
   const p=new URLSearchParams(h);if(![...p.keys()].some(n=>SHARE_KEYS.some(x=>x[1]===n)))return;
-  Object.assign(S,{q:"",roles:[],srcs:[],min:DEF.min,since:"",sort:"score",remote:false,hideGeo:false,visa:false,hideRisk:false});
+  Object.assign(S,{q:"",roles:[],srcs:[],countries:[],min:DEF.min,since:"",sort:"score",remote:false,hideGeo:false,visa:false,hideRisk:false});
   for(const [k,n,t] of SHARE_KEYS){if(!p.has(n))continue;const v=p.get(n);
     S[k]=t==="a"?v.split(",").filter(Boolean):t==="b"?v==="1":t==="n"?(+v||DEF[k]):v}
   if(!SINCE_MS[S.since])S.since="";if(!SORTS.some(x=>x[0]===S.sort))S.sort="score";
@@ -716,7 +787,7 @@ document.addEventListener("click",e=>{
   if(sqd){e.stopPropagation();return saveSearches(SET.saved_searches.filter((_,i)=>i!==+sqd.dataset.sqdel))}
   const sqc=e.target.closest("[data-sq]");
   if(sqc){const it=SET.saved_searches[+sqc.dataset.sq];if(it){S.q=S.q===it.q?"":it.q;$("#q").value=S.q;change()}return}
-  const t=e.target.closest("button,[data-src]");
+  const t=e.target.closest("button,[data-src],[data-country]");
   if(!t){                                                      // click on the card body itself → show it on the right
     if(e.target.closest("select,summary,input,label"))return;
     const c=e.target.closest(".card");if(c)openDetail(+c.dataset.id);
@@ -731,6 +802,8 @@ document.addEventListener("click",e=>{
   if(d.share!==undefined){return shareLink()}
   if(d.sort){S.sort=d.sort;return change()}
   if(d.src){S.srcs=toggle(S.srcs,d.src);return change()}
+  if(d.country){S.countries=toggle(S.countries,d.country);return change()}
+  if(d.countriesmore!==undefined){countriesOpen=!countriesOpen;return renderSide()}
   if(d.sqsave!==undefined){const q=S.q.trim(),name=($("#sqname")?.value||q).trim()||q;return saveSearches([...(SET.saved_searches||[]),{name,q}])}
   if(d.closeset!==undefined){$("#settings").classList.remove("show");return}
   if(d.fold){S.closed={...S.closed,[d.fold]:!S.closed[d.fold]};save();return renderSide()}
@@ -738,10 +811,11 @@ document.addEventListener("click",e=>{
     const names=kindNames(d.grp);
     const allOn=names.every(n=>has(S.srcs,n));S.srcs=allOn?S.srcs.filter(n=>!names.includes(n)):[...new Set([...S.srcs,...names])];return change()}
   if(d.clear){S[d.clear]=[];return change()}
-  if(d.clearall!==undefined){Object.assign(S,{q:"",since:"",roles:[],srcs:[],remote:false,hideRisk:false,hideGeo:false,visa:false});$("#q").value="";return change()}
+  if(d.clearall!==undefined){Object.assign(S,{q:"",since:"",roles:[],srcs:[],countries:[],remote:false,hideRisk:false,hideGeo:false,visa:false});$("#q").value="";return change()}
   if(d.rm){const k=d.rm;
     if(k==="q"){S.q="";$("#q").value=""}else if(k==="since")S.since="";else if(k.startsWith("role:"))S.roles=S.roles.filter(x=>x!==k.slice(5));
     else if(k.startsWith("grp:")){const ns=kindNames(k.slice(4));S.srcs=S.srcs.filter(x=>!ns.includes(x))}
+    else if(k.startsWith("country:"))S.countries=S.countries.filter(x=>x!==k.slice(8));
     else if(k.startsWith("src:"))S.srcs=S.srcs.filter(x=>x!==k.slice(4));else if(k==="remote")S.remote=false;else if(k==="risk")S.hideRisk=false;else if(k==="geo")S.hideGeo=false;else if(k==="visa")S.visa=false;
     return change()}
   if(d.more!==undefined){limit+=PAGE;return renderList()}
@@ -777,7 +851,7 @@ document.addEventListener("change",e=>{
   if(e.target.id==="fVisa"){S.visa=e.target.checked;change()}
 });
 document.addEventListener("keydown",e=>{
-  if(e.target.matches?.("[data-src]")&&(e.key==="Enter"||e.key===" ")){e.preventDefault();return e.target.click()}
+  if(e.target.matches?.("[data-src],[data-country]")&&(e.key==="Enter"||e.key===" ")){e.preventDefault();return e.target.click()}
   const typing=/INPUT|SELECT|TEXTAREA/.test(document.activeElement.tagName);
   if(e.key==="Escape"){$("#modal").classList.remove("show");$("#settings").classList.remove("show");document.body.classList.remove("drawer");closeDetail();if(typing)document.activeElement.blur();return}
   if(typing||e.metaKey||e.ctrlKey||e.altKey)return;
