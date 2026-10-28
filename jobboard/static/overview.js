@@ -9,7 +9,7 @@
   const style = document.createElement("style");
   style.textContent = `
   #stats{display:none!important}
-  body.view-overview main>:is(#tabs,.tools,#list,#sentinel){display:none!important}
+  body.view-overview main>:is(#tabs,.tools,#list,#sentinel,#filters){display:none!important}
   body:not(.view-overview) #overview{display:none}
   .vtabs{display:flex;gap:6px;margin:2px 0 14px}
   .vtabs button{border:1px solid var(--line);background:var(--panel);color:var(--mut);border-radius:9px;padding:6px 16px;font-size:14px;cursor:pointer}

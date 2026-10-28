@@ -29,7 +29,7 @@ button{cursor:pointer}
 :root{--side:clamp(236px,15vw,420px)}
 body.side-collapsed{--side:clamp(52px,3.4vw,68px)}
 .app{display:grid;grid-template-columns:var(--side) minmax(0,1fr) 0;min-height:100vh}
-@media(min-width:1280px){.app{grid-template-columns:var(--side) minmax(460px,5fr) minmax(360px,6fr)}}
+@media(min-width:1280px){.app{grid-template-columns:var(--side) minmax(500px,6fr) minmax(340px,5fr)}}
 
 /* ---------- sidebar: filters only ---------- */
 aside{background:var(--panel);border-right:1px solid var(--line);padding:16px 14px 28px;position:sticky;top:0;height:100vh;overflow:auto;overflow-x:hidden;scrollbar-width:thin}
@@ -218,27 +218,63 @@ pre{white-space:pre-wrap;word-break:break-word;font:inherit;background:var(--pan
   main{padding:0 14px 80px}
 }
 @media(max-width:560px){#help{display:none}.card{grid-template-columns:34px minmax(0,1fr)}.acts{grid-column:2;justify-content:flex-start}.ring{grid-row:auto}.search kbd{display:none}.stats{gap:14px}}
+
+/* ======== modern layer: filter bar, avatars, roomy rows ======== */
+:root{--bg:#fafaf8;--panel:#fff;--panel2:#f3f3ef;--line:#ebebe5;--line2:#d9d9d0;--ac:#0d9488;--acsoft:#d9f2ee;--r:14px;
+  --shadow:0 1px 2px rgba(20,24,28,.05),0 6px 18px -10px rgba(20,24,28,.12);--pop:0 10px 30px -12px rgba(20,24,28,.25)}
+@media(prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0c0f11;--panel:#14181b;--panel2:#1b2023;--line:#23292d;--line2:#343c42;--ac:#2dd4bf;--shadow:0 1px 0 rgba(255,255,255,.02);--pop:0 14px 36px -12px rgba(0,0,0,.7)}}
+:root[data-theme="dark"]{--bg:#0c0f11;--panel:#14181b;--panel2:#1b2023;--line:#23292d;--line2:#343c42;--ac:#2dd4bf;--shadow:0 1px 0 rgba(255,255,255,.02);--pop:0 14px 36px -12px rgba(0,0,0,.7)}
+body{font-size:14.5px;letter-spacing:-.003em}
+aside{background:transparent;border-right:1px solid var(--line);padding-top:20px}
+.brand{font-size:16px;margin-bottom:6px}
+.logo{border-radius:9px;width:30px;height:30px}
+.bar{padding:16px 0 12px}
+.search input{padding:12px 44px 12px 40px;border-radius:14px;font-size:15px;box-shadow:var(--shadow)}
+.search svg{top:14px;left:14px;width:17px;height:17px}.search kbd{top:11px}
+.btn{border-radius:12px}
+.vtabs button{border-radius:10px!important}
+.filters{display:flex;flex-wrap:wrap;align-items:center;gap:8px 18px;margin:2px 0 12px;padding:10px 14px;background:var(--panel);border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--shadow)}
+.frow:not(.rolesrow){display:contents}.rolesrow{flex:1 0 100%;display:flex}
+.fgroup{display:flex;align-items:center;gap:8px}
+.flabel{font-size:12px;font-weight:600;color:var(--mut);letter-spacing:.02em;white-space:nowrap}
+.flabel button{border:0;background:none;color:var(--ac);font-size:12px;margin-left:8px;padding:0;font-weight:500}
+.filters .seg{background:var(--panel2);border-radius:10px;padding:3px}
+.filters .seg button{padding:4px 11px;font-size:12.5px}
+.card .stsel{display:none}
+.toggles .switch{padding:4px 12px!important}
+.toggles{gap:8px}
+.toggles .switch{position:relative;border:1px solid var(--line);border-radius:99px;padding:5px 14px;font-size:13px;color:var(--mut);gap:0;transition:.12s}
+.toggles .switch:hover{border-color:var(--ac);color:var(--fg);background:none}
+.toggles .switch input{position:absolute;inset:0;opacity:0;width:100%;height:100%;margin:0;cursor:pointer;background:none}
+.toggles .switch:has(input:checked){background:var(--ac);border-color:var(--ac);color:var(--acfg);font-weight:600}
+.toggles .switch:has(input:focus-visible){outline:2px solid var(--ac);outline-offset:2px}
+.rolesrow{align-items:flex-start;flex-wrap:nowrap;gap:12px}.rolesrow .flabel{padding-top:5px}
+.rolesrow .chips{flex:1}
+.chipbtn{border-radius:99px;padding:4px 12px}
+.chipbtn.on{box-shadow:0 2px 8px -3px var(--ac)}
+.list{gap:10px}
+.card{grid-template-columns:44px minmax(0,1fr) auto;gap:3px 14px;padding:16px 18px;box-shadow:var(--shadow);border-radius:var(--r)}
+.card:hover{border-color:var(--line2);box-shadow:var(--pop);transform:translateY(-1px)}
+.card.sel{box-shadow:0 0 0 2px var(--ac)}
+.av{width:44px;height:44px;border-radius:12px;display:grid;place-items:center;grid-row:span 2;font-weight:700;font-size:18px;color:var(--c);background:color-mix(in srgb,var(--c) 14%,var(--panel))}
+h3{font-size:16px;font-weight:650}
+.meta{font-size:13.5px;gap:2px 16px;margin-top:3px}
+.sc{align-self:center;font-size:12.5px;font-weight:700;min-width:30px;text-align:center;padding:3px 8px;border-radius:8px;background:var(--acsoft);color:var(--ac)}
+.sc.hi{background:var(--oksoft);color:var(--ok)}.sc.lo{background:var(--panel2);color:var(--mut)}
+.acts{align-items:center}
+.tag{border-radius:99px;padding:0 10px 0 8px;background:var(--panel2);border-color:transparent}
+.dense .card{padding:10px 14px}.dense .av{width:34px;height:34px;font-size:14px;border-radius:9px}.dense .card{grid-template-columns:34px minmax(0,1fr) auto}
+.tabs{margin-top:4px}.tab{padding:9px 14px}
+.dp-body h2{font-size:21px}
+.orig{border-radius:12px}
+@media(max-width:960px){.filters{padding:12px}.rolesrow{flex-wrap:wrap}.fgroup{width:100%}.fgroup .seg{flex:1}}
+@media(max-width:560px){.card{grid-template-columns:40px minmax(0,1fr);padding:14px}.av{width:40px;height:40px;grid-row:span 1}.acts{grid-column:2}}
 </style>
 </head>
 <body>
 <div class="app">
 <aside id="side" aria-label="筛选">
   <div class="brand"><div class="logo">✦</div><span class="bname">岗位看板</span><button class="sidetoggle" id="sideToggle" title="收起侧栏 (b)" aria-label="收起侧栏">«</button></div>
-
-  <div class="sec">匹配度</div>
-  <div class="seg" id="seg" role="group" aria-label="匹配度"></div>
-
-  <div class="sec">发布时间</div>
-  <div class="seg" id="segSince" role="group" aria-label="发布时间"></div>
-
-  <div class="sec">方向 <button data-clear="roles" id="clrRoles" hidden>清除</button></div>
-  <div class="chips" id="roles"></div>
-
-  <div class="sec">条件</div>
-  <label class="switch">仅远程<input type="checkbox" id="fRemote"></label>
-  <label class="switch" title="隐藏标注了「不收个人信息」「博彩」等风险的岗位">隐藏有风险提示<input type="checkbox" id="fRisk"></label>
-  <label class="switch" title="只显示远程岗位，并去掉标明「仅限美国 / 仅限欧洲 / US only / 必须位于某国」等限制居住地的岗位。没写限制的算全球可申请；地点写了具体城市的不算">🌍 只看全球远程<input type="checkbox" id="fGeo"></label>
-  <label class="switch" title="岗位写明雇主可办理签证担保（或官方标明，如加拿大 LMIA）；明确写“不提供担保”的不算">只看雇主担保签证<input type="checkbox" id="fVisa"></label>
 
   <div class="sec">常用搜索</div>
   <div id="savedq"></div>
@@ -264,6 +300,19 @@ pre{white-space:pre-wrap;word-break:break-word;font:inherit;background:var(--pan
   </div>
 
   <div class="stats" id="stats"></div>
+  <div class="filters" id="filters" aria-label="筛选">
+    <div class="frow">
+      <div class="fgroup"><span class="flabel">匹配度</span><div class="seg" id="seg" role="group" aria-label="匹配度"></div></div>
+      <div class="fgroup"><span class="flabel">发布时间</span><div class="seg" id="segSince" role="group" aria-label="发布时间"></div></div>
+    </div>
+    <div class="frow toggles">
+      <label class="switch">仅远程<input type="checkbox" id="fRemote"></label>
+      <label class="switch" title="只显示远程岗位，并去掉标明「仅限美国 / 仅限欧洲 / US only / 必须位于某国」等限制居住地的岗位。没写限制的算全球可申请；地点写了具体城市的不算">全球远程<input type="checkbox" id="fGeo"></label>
+      <label class="switch" title="岗位写明雇主可办理签证担保（或官方标明，如加拿大 LMIA）；明确写“不提供担保”的不算">担保签证<input type="checkbox" id="fVisa"></label>
+      <label class="switch" title="隐藏标注了「不收个人信息」「博彩」等风险的岗位">隐藏风险提示<input type="checkbox" id="fRisk"></label>
+    </div>
+    <div class="frow rolesrow"><span class="flabel">方向<button data-clear="roles" id="clrRoles" hidden>清除</button></span><div class="chips" id="roles"></div></div>
+  </div>
   <div class="tabs" id="tabs" role="tablist"></div>
 
   <div class="tools">
@@ -406,7 +455,7 @@ function renderSide(){
       <button class="chev" data-fold="${k}" aria-label="展开/收起">▾</button>
       <button class="gsel ${allOn?"on":""}" data-grp="${k}" title="只看这一组 / 取消">${label}<span>${total}</span></button></div>
       <div class="rows">${items.map(i=>`<div class="srow ${has(S.srcs,i.n)?"on":""} ${i.c?"":"zero"}" data-src="${esc(i.n)}" role="checkbox" aria-checked="${has(S.srcs,i.n)}" tabindex="0" title="${esc(i.n)}">
-        <span class="chk"></span><b>${esc(i.n)}</b><i>${i.c}</i>${i.url?`<a class="ext" href="${esc(i.url)}" target="_blank" rel="noopener" title="在 Telegram 打开频道" aria-label="打开频道">↗</a>`:"<span></span>"}</div>`).join("")}</div></div>`;
+        <span class="chk"></span><b>${esc(i.n.replace(/^GitHub: /,""))}</b><i>${i.c}</i>${i.url?`<a class="ext" href="${esc(i.url)}" target="_blank" rel="noopener" title="在 Telegram 打开频道" aria-label="打开频道">↗</a>`:"<span></span>"}</div>`).join("")}</div></div>`;
   }).join("")||'<div class="count" style="padding:0 8px">暂无来源</div>';
 }
 
@@ -440,7 +489,7 @@ function renderActive(){
   $("#active").innerHTML=f.map(([k,t])=>`<button class="af" data-rm="${esc(k)}" aria-label="移除筛选 ${esc(t)}">${esc(t)} <span>✕</span></button>`).join("")+(f.length>1?`<button class="clear" data-clearall>清除全部</button>`:"");
 }
 function actionsHtml(j){
-  return `<div class="acts">
+  return `<div class="acts"><span class="sc ${j.score>=10?"hi":j.score<6?"lo":""}" title="匹配度 ${j.score}">${j.score}</span>
     <button class="ibtn ${j.status==="interested"?"on":""}" data-st="${j.status==="interested"?"new":"interested"}" title="感兴趣 (s)" aria-label="感兴趣" aria-pressed="${j.status==="interested"}">★</button>
     <select class="stsel" data-sel aria-label="状态">${STATUS.slice(1).map(([k,l])=>`<option value="${k}" ${j.status===k?"selected":""}>${l}</option>`).join("")}</select></div>`;
 }
@@ -462,13 +511,13 @@ function chHome(sources){
 }
 const hasContact=j=>j.contacts.telegram.length||j.contacts.email.length;   // the plain "原帖" link is already in the source pills
 function card(j){
-  const p=Math.min(100,j.score*7),ringCls=j.score>=10?"hi":j.score<6?"lo":"";
+  
   const isNew=Date.now()-utc(j.first_seen)<864e5&&j.status==="new";
   const posted=utc(j.posted_at);
   const geo=j.geo==="worldwide"?`<span class="okg" title="${esc(j.location||"")}">🌍 全球可申请</span>`:j.geo==="restricted"&&j.remote?`<span class="geo" title="${esc(j.location||"")}">🚧 限地区：${esc((j.location||"").slice(0,26))}</span>`:(j.location?`<span>${esc(j.location.slice(0,26))}</span>`:"");
   const visa=j.visa==="yes"?`<span class="okg" title="岗位写明雇主可办理签证担保，或官方标明（如加拿大 LMIA）。申请前请向雇主确认">🛂 担保签证</span>`:j.visa==="maybe"?`<span title="提到搬迁/安家支持，不一定包含签证担保">✈ 含搬迁支持</span>`:"";
   return `<article class="card ${j.status} ${sel===j.id?"sel":""}" data-id="${j.id}">
-    <div class="ring ${ringCls}" style="--p:${p}" title="匹配度 ${j.score}"><b>${j.score}</b></div>
+    <div class="av" style="--c:${tagColor(j.company||j.title)}" aria-hidden="true">${esc([...(j.company||j.title).trim()][0]||"•").toUpperCase()}</div>
     <div class="head"><h3>${esc(j.title)}${isNew?'<span class="new">NEW</span>':""}</h3>
       <div class="meta">${j.company?`<span>${esc(j.company)}</span>`:""}${j.salary?`<span class="sal">${esc(j.salary)}</span>`:""}${j.remote?"<span>远程</span>":""}${geo}${visa}<span title="${esc(dateOnly(j)?"来源只提供日期："+posted.toLocaleDateString([],{timeZone:"UTC"}):posted.toLocaleString())+(j.last_posted?"；最近一次出现 "+utc(j.last_posted).toLocaleString():"")}">${whenText(j)}${j.last_posted?` · 重发 ${ago(utc(j.last_posted))}`:""}</span></div></div>
     ${actionsHtml(j)}
