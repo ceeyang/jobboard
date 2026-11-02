@@ -36,19 +36,14 @@
     const box = document.createElement("div");
     box.className = "intro";
     const show = (site) => {
-      box.innerHTML = `<div><b>${site.title}</b>：${site.description || "公开岗位的聚合看板。"}` +
-        "这里只显示摘要和<b>原帖链接</b>，申请请点开原帖。数据由 GitHub Actions <b>自动更新</b>，但 GitHub 的定时触发<b>并不准点</b>" +
-        "（实测近期通常每 4–8 小时一次），页面右上角会显示上次更新时间。想找<b>雇主担保签证</b>的岗位，打开左侧「只看雇主担保签证」" +
-        "（根据岗位正文判断，申请前请向雇主确认）。感兴趣/已投等标记只保存在你当前的浏览器里。<a href=\"about.html\">数据来源与状态</a></div><button>知道了</button>";
+      box.innerHTML = `<div><b>${site.title}</b>：自动更新，但 GitHub 定时<b>不准点</b>（近期约每 4–8 小时），右上角显示上次更新时间 · 只显示摘要和原帖链接，申请请到原帖 · ` +
+        `<a href="about.html">数据来源、隐私与下架</a></div><button>知道了</button>`;
       box.querySelector("button").onclick = () => { write("jb-pub-intro", true); box.remove(); };
       const anchor = document.querySelector("#overview") || document.querySelector("#stats");   // right under the tabs
       anchor?.parentNode.insertBefore(box, anchor);
     };
     data("meta").then(m => show(m.site || { title: "公开版岗位看板", description: "" })).catch(() => show({ title: "公开版岗位看板", description: "" }));
   });
-  try {   // first visit: show the Telegram channel group expanded (the page folds it by default)
-    if (!localStorage.getItem("jb2")) localStorage.setItem("jb2", JSON.stringify({ closed: { telegram: false } }));
-  } catch (e) {}
   // Paged loading: the first chunk (best matches) is enough to show the page; the rest arrives in the background and the
   // page re-reads /api/jobs as chunks land, so search and filters become complete without blocking the first paint.
   async function firstChunk() {

@@ -279,6 +279,9 @@ def write_site(out: str | Path, jobs: list[dict], *, now: datetime, window_days:
     page = page.replace("function nextRunText(m,next){", "function nextRunText(m,next){if(window.JB_STATIC)return window.JB_STATIC.label();", 1)
     title_html = html.escape(site["title"])
     page = page.replace("<title>岗位看板</title>", f'<title>{title_html}</title>\n<link rel="alternate" type="application/rss+xml" title="{title_html}" href="feed.xml">', 1)
+    if site.get("description"):
+        page = page.replace('<meta name="description" content="聚合公开招聘信息的看板：按匹配度、方向、地区、发布时间筛选，只显示摘要和原帖链接。">',
+                            f'<meta name="description" content="{html.escape(site["description"], quote=True)}">', 1)
     page = page.replace('<span class="bname">岗位看板</span>', f'<span class="bname">{title_html}</span>', 1)
     rec, strict = levels["recommended"], levels["strict"]
     for old, new in (('const LEVELS=[[1,"宽松"],[5,"推荐"],[10,"严格"]];', f'const LEVELS=[[1,"宽松"],[{rec},"推荐"],[{strict},"严格"]];'),

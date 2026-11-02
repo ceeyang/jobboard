@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>岗位看板</title>
+<meta name="description" content="聚合公开招聘信息的看板：按匹配度、方向、地区、发布时间筛选，只显示摘要和原帖链接。">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 32 32%27%3E%3Crect width=%2732%27 height=%2732%27 rx=%278%27 fill=%27%230f766e%27/%3E%3Ctext x=%2716%27 y=%2722%27 font-size=%2718%27 text-anchor=%27middle%27 fill=%27white%27%3E%E2%9C%A6%3C/text%3E%3C/svg%3E">
 <style>
 :root{
@@ -286,6 +287,25 @@ body.detail:not(.pinned) .dscrim{display:block;position:fixed;inset:0;background
 }
 .dayhead{font-size:12.5px;font-weight:700;color:var(--mut);margin:14px 2px 2px;display:flex;gap:8px;align-items:baseline}.dayhead span{font-weight:400;opacity:.7}
 .pinbtn.on{background:var(--acsoft);border-color:var(--ac);color:var(--ac)}
+
+/* ======== v3: flat list, calmer chrome, accessibility fixes ======== */
+.list{gap:0;background:var(--panel);border:1px solid var(--line);border-radius:14px;overflow:hidden;box-shadow:var(--shadow)}
+.card{border:0;border-bottom:1px solid var(--line);border-radius:0;box-shadow:none;background:transparent;padding:14px 18px}
+.card:last-child{border-bottom:0}
+.card:hover{background:var(--panel2);box-shadow:none;transform:none;border-color:var(--line)}
+.card.sel{background:color-mix(in srgb,var(--acsoft) 60%,var(--panel));box-shadow:inset 3px 0 0 var(--ac);border-color:var(--line)}
+.card.applied::before,.card.replied::before,.card.interested::before{left:0}
+.list .dayhead{margin:0;padding:8px 18px;background:var(--panel2);border-bottom:1px solid var(--line);color:var(--mut)}
+.list .more{margin:12px auto}
+.list .empty{border:0;background:transparent}
+.when{font-size:12.5px;color:var(--mut);white-space:nowrap;align-self:center}
+.tag.more{color:var(--mut);cursor:help}.tag.more::before{display:none}
+.meta{color:var(--mut)}.meta>span+span::before{content:"·";margin-right:14px;opacity:.5}.meta{gap:2px 14px}
+.srow.zero{opacity:1;color:var(--mut)}.srow.zero .chk{opacity:.6}
+.chev{min-width:28px;min-height:28px}
+.ghead .gsel{min-height:28px}
+.dp-top .ibtn,.ibtn{min-width:30px}
+@media(max-width:560px){.when{grid-column:2;justify-self:start}.acts{flex-wrap:wrap}}
 </style>
 </head>
 <body>
@@ -394,7 +414,7 @@ const SORTS=[["score","最匹配"],["new","最新"]];
 const SINCES=[["","不限"],["1d","1天"],["3d","3天"],["7d","1周"],["30d","1月"]];
 const SINCE_MS={"1d":864e5,"3d":3*864e5,"7d":7*864e5,"30d":30*864e5};
 const PAGE=40,LS="jb2";
-const DEF={sideCollapsed:false,status:"all",min:5,since:"",roles:[],offSrcs:[],remote:false,hideRisk:false,hideGeo:false,visa:false,q:"",sort:"score",dense:false,theme:"auto",closed:{telegram:true,countries:true},pin:false,offCountries:[]};   // sources and countries start fully ticked: what is stored is what the user switched OFF
+const DEF={sideCollapsed:false,status:"all",min:5,since:"",roles:[],offSrcs:[],remote:false,hideRisk:false,hideGeo:false,visa:false,q:"",sort:"score",dense:false,theme:"auto",closed:{telegram:true,countries:true,site:true,gov:true,github:true},pin:false,offCountries:[]};   // sources and countries start fully ticked: what is stored is what the user switched OFF
 const $=(s,r=document)=>r.querySelector(s);
 const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 let S;try{S={...DEF,...JSON.parse(localStorage.getItem(LS)||"{}")}}catch(e){S={...DEF}}
@@ -582,8 +602,8 @@ function renderActive(){
   if(S.remote)f.push(["remote","仅远程"]);if(S.hideRisk)f.push(["risk","隐藏风险"]);if(S.hideGeo)f.push(["geo","全球远程"]);if(S.visa)f.push(["visa","担保签证"]);
   $("#active").innerHTML=f.map(([k,t])=>`<button class="af" data-rm="${esc(k)}" aria-label="移除筛选 ${esc(t)}">${esc(t)} <span>✕</span></button>`).join("")+(f.length>1?`<button class="clear" data-clearall>清除全部</button>`:"");
 }
-function actionsHtml(j){
-  return `<div class="acts"><span class="sc ${j.score>=10?"hi":j.score<6?"lo":""}" title="匹配度 ${j.score}">${j.score}</span>
+function actionsHtml(j,when=""){
+  return `<div class="acts">${when}<span class="sc ${j.score>=10?"hi":j.score<6?"lo":""}" title="匹配度 ${j.score}">${j.score}</span>
     <button class="ibtn ${j.status==="interested"?"on":""}" data-st="${j.status==="interested"?"new":"interested"}" title="感兴趣 (s)" aria-label="感兴趣" aria-pressed="${j.status==="interested"}">★</button>
     <select class="stsel" data-sel aria-label="状态">${STATUS.slice(1).map(([k,l])=>`<option value="${k}" ${j.status===k?"selected":""}>${l}</option>`).join("")}</select></div>`;
 }
@@ -613,10 +633,10 @@ function card(j){
   return `<article class="card ${j.status} ${sel===j.id?"sel":""}" data-id="${j.id}">
     <div class="av" style="--c:${tagColor(j.company||j.title)}" aria-hidden="true">${esc([...(j.company||j.title).trim()][0]||"•").toUpperCase()}</div>
     <div class="head"><h3>${esc(j.title)}${isNew?'<span class="new">NEW</span>':""}</h3>
-      <div class="meta">${j.company?`<span>${esc(j.company)}</span>`:""}${j.salary?`<span class="sal">${esc(j.salary)}</span>`:""}${j.remote?"<span>远程</span>":""}${geo}${visa}<span title="${esc(dateOnly(j)?"来源只提供日期："+posted.toLocaleDateString([],{timeZone:"UTC"}):posted.toLocaleString())+(j.last_posted?"；最近一次出现 "+utc(j.last_posted).toLocaleString():"")}">${whenText(j)}${j.last_posted?` · 重发 ${ago(utc(j.last_posted))}`:""}</span></div></div>
-    ${actionsHtml(j)}
+      <div class="meta">${j.company?`<span>${esc(j.company)}</span>`:""}${j.salary?`<span class="sal">${esc(j.salary)}</span>`:""}${j.remote?"<span>远程</span>":""}${geo}${visa}${j.last_posted?`<span>重发 ${ago(utc(j.last_posted))}</span>`:""}</div></div>
+    ${actionsHtml(j,`<span class="when" title="${esc(dateOnly(j)?"来源只提供日期："+posted.toLocaleDateString([],{timeZone:"UTC"}):posted.toLocaleString())+(j.last_posted?"；最近一次出现 "+utc(j.last_posted).toLocaleString():"")}">${whenText(j)}</span>`)}
     <div class="body">
-      <div class="tags">${[...new Set(j.tags)].map(t=>`<span class="tag" style="--c:${tagColor(t)}">${esc(lab(t))}</span>`).join("")}</div>
+      <div class="tags">${(ts=>ts.slice(0,4).map(t=>`<span class="tag" style="--c:${tagColor(t)}">${esc(lab(t))}</span>`).join("")+(ts.length>4?`<span class="tag more" title="${esc(ts.slice(4).map(lab).join("、"))}">+${ts.length-4}</span>`:""))([...new Set(j.tags)])}</div>
       <div class="row">${srcPills(j.sources)}</div>
       ${hasContact(j)?`<div class="row">${contacts(j.contacts)}</div>`:""}
       ${j.risks.length?`<div class="warn">⚠️ <span>${j.risks.map(esc).join("；")} — 谨慎核实，不要提交证件或预付费用</span></div>`:""}
