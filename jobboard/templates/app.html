@@ -308,10 +308,10 @@ body.detail:not(.pinned) .dscrim{display:block;position:fixed;inset:0;background
   <label class="switch" title="岗位写明雇主可办理签证担保（或官方标明，如加拿大 LMIA）；明确写“不提供担保”的不算">担保签证<input type="checkbox" id="fVisa"></label>
   <label class="switch" title="隐藏标注了「不收个人信息」「博彩」等风险的岗位">隐藏风险提示<input type="checkbox" id="fRisk"></label>
 
-  <div class="sec">国家 / 地区 <button data-clear="countries" id="clrCountries" hidden>清除</button></div>
+  <div class="sec">国家 / 地区 <button data-clear="offCountries" id="clrCountries" hidden>全选</button></div>
   <div id="countries"></div>
 
-  <div class="sec">来源 <button data-clear="srcs" id="clrSrcs" hidden>清除</button></div>
+  <div class="sec">来源 <button data-clear="offSrcs" id="clrSrcs" hidden>全选</button></div>
   <div id="srcs"></div>
 </aside>
 <div class="scrim" id="scrim"></div>
@@ -394,10 +394,11 @@ const SORTS=[["score","最匹配"],["new","最新"]];
 const SINCES=[["","不限"],["1d","1天"],["3d","3天"],["7d","1周"],["30d","1月"]];
 const SINCE_MS={"1d":864e5,"3d":3*864e5,"7d":7*864e5,"30d":30*864e5};
 const PAGE=40,LS="jb2";
-const DEF={sideCollapsed:false,status:"all",min:5,since:"",roles:[],srcs:[],remote:false,hideRisk:false,hideGeo:false,visa:false,q:"",sort:"score",dense:false,theme:"auto",closed:{telegram:true,countries:true},pin:false,countries:[]};
+const DEF={sideCollapsed:false,status:"all",min:5,since:"",roles:[],offSrcs:[],remote:false,hideRisk:false,hideGeo:false,visa:false,q:"",sort:"score",dense:false,theme:"auto",closed:{telegram:true,countries:true},pin:false,offCountries:[]};   // sources and countries start fully ticked: what is stored is what the user switched OFF
 const $=(s,r=document)=>r.querySelector(s);
 const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 let S;try{S={...DEF,...JSON.parse(localStorage.getItem(LS)||"{}")}}catch(e){S={...DEF}}
+delete S.srcs;delete S.countries;                       // older versions stored what was selected; start from "everything on"
 const save=()=>{try{localStorage.setItem(LS,JSON.stringify(S))}catch(e){}};
 let jobs=[],chats=[],limit=PAGE,sel=null,loaded=false,view=[],rolesOpen=false,countriesOpen=false;
 const has=(a,x)=>a.includes(x),toggle=(a,x)=>has(a,x)?a.filter(y=>y!==x):[...a,x];
@@ -491,8 +492,8 @@ function match(j,s,skip){
   if(s.since&&pt(j)<Date.now()-SINCE_MS[s.since])return false;
   if(skip!=="status"&&(s.status==="all"?j.status==="ignored":j.status!==s.status))return false;
   if(s.roles.length&&!j.tags.some(t=>has(s.roles,t)))return false;
-  if(skip!=="srcs"&&s.srcs.length&&!j.sources.some(x=>has(s.srcs,x.chat)))return false;
-  if(skip!=="countries"&&s.countries&&s.countries.length&&!countryOf(j).some(c=>has(s.countries,c)))return false;
+  if(skip!=="srcs"&&s.offSrcs.length&&!j.sources.some(x=>!has(s.offSrcs,x.chat)))return false;
+  if(skip!=="countries"&&s.offCountries.length&&!countryOf(j).some(c=>!has(s.offCountries,c)))return false;
   if(s.remote&&!j.remote)return false;
   if(s.hideRisk&&j.risks.length)return false;
   if(s.hideGeo&&!globalRemote(j))return false;
@@ -515,7 +516,7 @@ function renderSide(){
   const RMAX=14,shownRoles=rolesOpen||ROLES.length<=RMAX+2?ROLES:ROLES.filter(([k],i)=>i<RMAX||has(S.roles,k));
   $("#roles").innerHTML=shownRoles.map(([k,l])=>`<button class="chipbtn ${has(S.roles,k)?"on":""}" data-r="${k}" aria-pressed="${has(S.roles,k)}" title="${esc(l)}">${esc(l)}</button>`).join("")+
     (ROLES.length>RMAX+2?`<button class="chipbtn more-chip" data-rolesmore>${rolesOpen?"收起":"更多 "+(ROLES.length-shownRoles.length)+" 个"}</button>`:"");
-  $("#clrRoles").hidden=!S.roles.length;$("#clrSrcs").hidden=!S.srcs.length;
+  $("#clrRoles").hidden=!S.roles.length;$("#clrSrcs").hidden=!S.offSrcs.length;
   $("#fRemote").checked=S.remote;$("#fRisk").checked=S.hideRisk;$("#fGeo").checked=S.hideGeo;$("#fVisa").checked=S.visa;
 
   const sq=SET.saved_searches||[],cur=S.q.trim(),already=sq.some(x=>x.q===cur);
@@ -523,14 +524,14 @@ function renderSide(){
     (cur&&!already?`<div class="saveq"><input id="sqname" placeholder="名称" value="${esc(cur.slice(0,14))}" maxlength="30" aria-label="常用搜索名称"><button data-sqsave>保存</button></div>`:"");
   const cbase=filtered("countries"),cc={};cbase.forEach(j=>countryOf(j).forEach(c=>cc[c]=(cc[c]||0)+1));
   const clist=Object.keys(cc).sort((a,b)=>(a==="XX")-(b==="XX")||cc[b]-cc[a]||COUNTRY_NAME[a].localeCompare(COUNTRY_NAME[b],"zh"));
-  S.countries.forEach(c=>{if(!clist.includes(c))clist.push(c)});                // a selected country stays visible even at 0
-  const CMAX=10,cshown=countriesOpen||clist.length<=CMAX+2?clist:clist.filter((c,i)=>i<CMAX||has(S.countries,c));
-  const cclosed=S.closed.countries!==false,csel=S.countries.length;
+  S.offCountries.forEach(c=>{if(!clist.includes(c))clist.push(c)});                // a switched-off country stays visible even at 0
+  const CMAX=10,cshown=countriesOpen||clist.length<=CMAX+2?clist:clist.filter((c,i)=>i<CMAX||has(S.offCountries,c));
+  const cclosed=S.closed.countries!==false,csel=S.offCountries.length;
   $("#countries").innerHTML=`<div class="grp ${cclosed?"closed":""}"><div class="ghead"><button class="chev" data-fold="countries" aria-label="展开/收起国家列表">▾</button>
-    <button class="gsel ${csel?"on":""}" data-fold="countries" title="展开 / 收起">${csel?"已选 "+csel+" 个国家":"全部国家"}<span>${clist.length}</span></button></div>
-    <div class="rows">${cshown.map(c=>`<div class="srow ${has(S.countries,c)?"on":""} ${cc[c]?"":"zero"}" data-country="${c}" role="checkbox" aria-checked="${has(S.countries,c)}" tabindex="0"><span class="chk"></span><b>${esc(COUNTRY_NAME[c]||c)}</b><i>${cc[c]||0}</i><span></span></div>`).join("")}
+    <button class="gsel ${csel?"on":""}" data-fold="countries" title="展开 / 收起">${csel?"已排除 "+csel+" 个国家":"全部国家"}<span>${clist.length}</span></button></div>
+    <div class="rows">${cshown.map(c=>`<div class="srow ${has(S.offCountries,c)?"":"on"} ${cc[c]?"":"zero"}" data-country="${c}" role="checkbox" aria-checked="${!has(S.offCountries,c)}" tabindex="0"><span class="chk"></span><b>${esc(COUNTRY_NAME[c]||c)}</b><i>${cc[c]||0}</i><span></span></div>`).join("")}
     ${clist.length>CMAX+2?`<button class="linkbtn" data-countriesmore style="margin:4px 6px">${countriesOpen?"收起":"更多 "+(clist.length-cshown.length)+" 个"}</button>`:""}</div></div>`;
-  $("#clrCountries").hidden=!S.countries.length;
+  $("#clrCountries").hidden=!S.offCountries.length;
   const base=filtered("srcs"),cnt=n=>base.filter(j=>j.sources.some(x=>x.chat===n)).length;
   const sites={},govs={},gits={};jobs.forEach(j=>j.sources.forEach(x=>{if(x.kind==="site")sites[x.chat]=1;else if(x.kind==="gov")govs[x.chat]=1;else if(x.kind==="github")gits[x.chat]=1}));
   const defs=[
@@ -542,11 +543,11 @@ function renderSide(){
   $("#srcs").innerHTML=defs.map(([k,label,items])=>{
     if(!items.length)return"";
     items=items.map(i=>({...i,c:cnt(i.n)})).sort((a,b)=>b.c-a.c||a.n.localeCompare(b.n));
-    const names=items.map(i=>i.n),allOn=names.every(n=>has(S.srcs,n)),total=base.filter(j=>j.sources.some(x=>x.kind===k)).length;
+    const names=items.map(i=>i.n),allOn=names.every(n=>!has(S.offSrcs,n)),total=base.filter(j=>j.sources.some(x=>x.kind===k)).length;
     return `<div class="grp ${S.closed[k]?"closed":""}"><div class="ghead">
       <button class="chev" data-fold="${k}" aria-label="展开/收起">▾</button>
       <button class="gsel ${allOn?"on":""}" data-grp="${k}" title="只看这一组 / 取消">${label}<span>${total}</span></button></div>
-      <div class="rows">${items.map(i=>`<div class="srow ${has(S.srcs,i.n)?"on":""} ${i.c?"":"zero"}" data-src="${esc(i.n)}" role="checkbox" aria-checked="${has(S.srcs,i.n)}" tabindex="0" title="${esc(i.n)}">
+      <div class="rows">${items.map(i=>`<div class="srow ${has(S.offSrcs,i.n)?"":"on"} ${i.c?"":"zero"}" data-src="${esc(i.n)}" role="checkbox" aria-checked="${!has(S.offSrcs,i.n)}" tabindex="0" title="${esc(i.n)}">
         <span class="chk"></span><b>${esc(i.n.replace(/^GitHub: /,""))}</b><i>${i.c}</i>${i.url?`<a class="ext" href="${esc(i.url)}" target="_blank" rel="noopener" title="在 Telegram 打开频道" aria-label="打开频道">↗</a>`:"<span></span>"}</div>`).join("")}</div></div>`;
   }).join("")||'<div class="count" style="padding:0 8px">暂无来源</div>';
 }
@@ -571,13 +572,13 @@ function renderActive(){
   if(S.q.trim())f.push(["q","搜索："+S.q.trim().slice(0,20)]);
   if(S.since)f.push(["since","最近 "+SINCES.find(x=>x[0]===S.since)[1]]);
   S.roles.forEach(r=>f.push(["role:"+r,lab(r)]));
-  let rest=S.srcs.slice();
-  for(const k of ["site","gov","github","telegram"]){            // a fully selected group is one chip, not N
+  let rest=S.offSrcs.slice();
+  for(const k of ["site","gov","github","telegram"]){            // a fully switched-off group is one chip, not N
     const names=kindNames(k);
-    if(names.length&&names.every(n=>has(S.srcs,n))){f.push(["grp:"+k,KIND_LABEL[k]+"（全部）"]);rest=rest.filter(n=>!names.includes(n))}
+    if(names.length&&names.every(n=>has(S.offSrcs,n))){f.push(["grp:"+k,"不含 "+KIND_LABEL[k]]);rest=rest.filter(n=>!names.includes(n))}
   }
-  rest.forEach(r=>f.push(["src:"+r,r.length>14?r.slice(0,13)+"…":r]));
-  S.countries.forEach(c=>f.push(["country:"+c,COUNTRY_NAME[c]||c]));
+  rest.forEach(r=>f.push(["src:"+r,"不含 "+(r.length>14?r.slice(0,13)+"…":r)]));
+  S.offCountries.forEach(c=>f.push(["country:"+c,"不含 "+(COUNTRY_NAME[c]||c)]));
   if(S.remote)f.push(["remote","仅远程"]);if(S.hideRisk)f.push(["risk","隐藏风险"]);if(S.hideGeo)f.push(["geo","全球远程"]);if(S.visa)f.push(["visa","担保签证"]);
   $("#active").innerHTML=f.map(([k,t])=>`<button class="af" data-rm="${esc(k)}" aria-label="移除筛选 ${esc(t)}">${esc(t)} <span>✕</span></button>`).join("")+(f.length>1?`<button class="clear" data-clearall>清除全部</button>`:"");
 }
@@ -768,7 +769,7 @@ function applySide(){
 const toggleSide=()=>{S.sideCollapsed=!S.sideCollapsed;save();applySide()};
 const applyTheme=()=>{if(S.theme==="auto")document.documentElement.removeAttribute("data-theme");else document.documentElement.setAttribute("data-theme",S.theme)};
 /* The filters live in the address (#q=flutter&r=ios,android&min=5&since=7d&remote=1&visa=1): a search can be shared or bookmarked. */
-const SHARE_KEYS=[["q","q","s"],["roles","r","a"],["srcs","src","a"],["countries","c","a"],["min","min","n"],["since","since","s"],["sort","sort","s"],["remote","remote","b"],["hideGeo","geo","b"],["visa","visa","b"],["hideRisk","risk","b"]];
+const SHARE_KEYS=[["q","q","s"],["roles","r","a"],["offSrcs","xsrc","a"],["offCountries","xc","a"],["min","min","n"],["since","since","s"],["sort","sort","s"],["remote","remote","b"],["hideGeo","geo","b"],["visa","visa","b"],["hideRisk","risk","b"]];
 function hashOf(){
   const p=new URLSearchParams();
   for(const [k,n,t] of SHARE_KEYS){const v=S[k];if(JSON.stringify(v)===JSON.stringify(DEF[k]))continue;p.set(n,t==="a"?v.join(","):t==="b"?"1":v)}
@@ -777,7 +778,7 @@ function hashOf(){
 function readHash(){
   const h=location.hash.replace(/^#\??/,"");if(!h)return;
   const p=new URLSearchParams(h);if(![...p.keys()].some(n=>SHARE_KEYS.some(x=>x[1]===n)))return;
-  Object.assign(S,{q:"",roles:[],srcs:[],countries:[],min:DEF.min,since:"",sort:"score",remote:false,hideGeo:false,visa:false,hideRisk:false});
+  Object.assign(S,{q:"",roles:[],offSrcs:[],offCountries:[],min:DEF.min,since:"",sort:"score",remote:false,hideGeo:false,visa:false,hideRisk:false});
   for(const [k,n,t] of SHARE_KEYS){if(!p.has(n))continue;const v=p.get(n);
     S[k]=t==="a"?v.split(",").filter(Boolean):t==="b"?v==="1":t==="n"?(+v||DEF[k]):v}
   if(!SINCE_MS[S.since])S.since="";if(!SORTS.some(x=>x[0]===S.sort))S.sort="score";
@@ -808,22 +809,22 @@ document.addEventListener("click",e=>{
   if(d.rolesmore!==undefined){rolesOpen=!rolesOpen;return renderSide()}
   if(d.share!==undefined){return shareLink()}
   if(d.sort){S.sort=d.sort;return change()}
-  if(d.src){S.srcs=toggle(S.srcs,d.src);return change()}
-  if(d.country){S.countries=toggle(S.countries,d.country);return change()}
+  if(d.src){S.offSrcs=toggle(S.offSrcs,d.src);return change()}
+  if(d.country){S.offCountries=toggle(S.offCountries,d.country);return change()}
   if(d.countriesmore!==undefined){countriesOpen=!countriesOpen;return renderSide()}
   if(d.sqsave!==undefined){const q=S.q.trim(),name=($("#sqname")?.value||q).trim()||q;return saveSearches([...(SET.saved_searches||[]),{name,q}])}
   if(d.closeset!==undefined){$("#settings").classList.remove("show");return}
   if(d.fold){const cur=d.fold==="countries"?S.closed.countries!==false:!!S.closed[d.fold];S.closed={...S.closed,[d.fold]:!cur};save();return renderSide()}   // the country list is folded unless explicitly opened
   if(d.grp){
     const names=kindNames(d.grp);
-    const allOn=names.every(n=>has(S.srcs,n));S.srcs=allOn?S.srcs.filter(n=>!names.includes(n)):[...new Set([...S.srcs,...names])];return change()}
+    const allOn=names.every(n=>!has(S.offSrcs,n));S.offSrcs=allOn?[...new Set([...S.offSrcs,...names])]:S.offSrcs.filter(n=>!names.includes(n));return change()}
   if(d.clear){S[d.clear]=[];return change()}
-  if(d.clearall!==undefined){Object.assign(S,{q:"",since:"",roles:[],srcs:[],countries:[],remote:false,hideRisk:false,hideGeo:false,visa:false});$("#q").value="";return change()}
+  if(d.clearall!==undefined){Object.assign(S,{q:"",since:"",roles:[],offSrcs:[],offCountries:[],remote:false,hideRisk:false,hideGeo:false,visa:false});$("#q").value="";return change()}
   if(d.rm){const k=d.rm;
     if(k==="q"){S.q="";$("#q").value=""}else if(k==="since")S.since="";else if(k.startsWith("role:"))S.roles=S.roles.filter(x=>x!==k.slice(5));
-    else if(k.startsWith("grp:")){const ns=kindNames(k.slice(4));S.srcs=S.srcs.filter(x=>!ns.includes(x))}
-    else if(k.startsWith("country:"))S.countries=S.countries.filter(x=>x!==k.slice(8));
-    else if(k.startsWith("src:"))S.srcs=S.srcs.filter(x=>x!==k.slice(4));else if(k==="remote")S.remote=false;else if(k==="risk")S.hideRisk=false;else if(k==="geo")S.hideGeo=false;else if(k==="visa")S.visa=false;
+    else if(k.startsWith("grp:")){const ns=kindNames(k.slice(4));S.offSrcs=S.offSrcs.filter(x=>!ns.includes(x))}
+    else if(k.startsWith("country:"))S.offCountries=S.offCountries.filter(x=>x!==k.slice(8));
+    else if(k.startsWith("src:"))S.offSrcs=S.offSrcs.filter(x=>x!==k.slice(4));else if(k==="remote")S.remote=false;else if(k==="risk")S.hideRisk=false;else if(k==="geo")S.hideGeo=false;else if(k==="visa")S.visa=false;
     return change()}
   if(d.more!==undefined){limit+=PAGE;return renderList()}
   if(d.copy){navigator.clipboard?.writeText(d.copy);return toast("已复制 "+d.copy)}
