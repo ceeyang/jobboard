@@ -19,11 +19,17 @@ WINDOW_DAYS, EXCERPT, CHUNK = 90, 600, 400     # jobs per data file: the page sh
 ROOT = Path(__file__).parent
 _EMAIL = re.compile(r"[\w.+-]+@[\w-]+(?:\.[\w-]+)+")
 _HANDLE = re.compile(r"(?<![\w/@])@[A-Za-z][A-Za-z0-9_]{3,31}\b")
+# Chinese-language posts rarely use e-mail: they leave a WeChat id, a QQ number or a mobile phone number instead
+_WECHAT = re.compile(r"(?i)(微信号?|薇信|威信|wechat|weixin|vx|v信|wx)\s*(?:id)?\s*[:：=是\s]*[（(]?\s*[A-Za-z][-_A-Za-z0-9]{5,19}")
+_QQ = re.compile(r"(?i)(qq(?:群号?|号)?|企鹅)\s*[:：=\s]*\d{5,12}")
+_PHONE = re.compile(r"(?<![\d.])(?:\+?86[-\s]?)?1[3-9]\d{9}(?!\d)|(?<![\w])\+\d{1,3}[-\s]?\d{2,4}[-\s]?\d{3,4}[-\s]?\d{3,4}(?!\d)")
 _TME = re.compile(r"(?:https?://)?t\.me/[^\s)>\]】\"']+", re.I)
 
 
 def redact(s: str | None) -> str:
     s = _TME.sub("[telegram]", s or "")
+    s = _WECHAT.sub(lambda m: m.group(1) + " [wechat]", _QQ.sub(lambda m: m.group(1) + " [qq]", s))
+    s = _PHONE.sub("[phone]", s)
     return _HANDLE.sub("[@]", _EMAIL.sub("[email]", s))
 
 
@@ -242,7 +248,7 @@ def write_site(out: str | Path, jobs: list[dict], *, now: datetime, window_days:
         stale.unlink()
     stats = compute_stats(jobs, now, cfg, chips, levels["recommended"], site_cfg.get("sites_base"))
     blob = json.dumps({"jobs": jobs, "stats": stats}, ensure_ascii=False)
-    leaks = [m.group(0) for m in (_EMAIL.search(blob), _HANDLE.search(re.sub(r"https?://\S+", "", blob))) if m]
+    leaks = [m.group(0) for m in (_EMAIL.search(blob), _WECHAT.search(blob), _QQ.search(blob), _HANDLE.search(re.sub(r"https?://\S+", "", blob))) if m]
     if leaks:
         raise RuntimeError(f"refusing to publish: contact data found in export ({leaks[0]!r})")
     head = {"generated_at": now.isoformat(), "total": len(jobs), "chunks": len(chunks), "chunk_size": CHUNK, "jobs": chunks[0]}

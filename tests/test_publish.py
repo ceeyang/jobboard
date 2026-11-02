@@ -279,3 +279,16 @@ def test_stats_never_contain_contacts(isolated, tmp_path):
     publish.export(isolated, tmp_path / "site", now=datetime(2026, 10, 25, 12, 0, tzinfo=timezone.utc))
     blob = (tmp_path / "site/data/stats.json").read_text(encoding="utf-8") + (tmp_path / "site/feed.xml").read_text(encoding="utf-8") + (tmp_path / "site/feed.json").read_text(encoding="utf-8")
     assert "hr@example.com" not in blob and "some_recruiter" not in blob
+
+
+@pytest.mark.parametrize("text,gone", [
+    ("加微信 abc_12345 咨询", "abc_12345"), ("VX: lijun888", "lijun888"), ("wechat：foo_bar99", "foo_bar99"), ("微信号：zhaopin2026", "zhaopin2026"),
+    ("QQ 123456789", "123456789"), ("QQ群：8888888", "8888888"), ("电话 13812345678", "13812345678"), ("+86 138 1234 5678", "1234 5678"),
+])
+def test_redact_removes_chinese_style_contacts(text, gone):
+    assert gone not in publish.redact(text)
+
+
+def test_redact_keeps_salaries_and_years():
+    t = "薪资 20000-40000 元，2026 年入职，3-5 年经验，1000000 用户"
+    assert publish.redact(t) == t

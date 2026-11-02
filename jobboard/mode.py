@@ -15,7 +15,7 @@ from pathlib import Path
 
 PUBLIC_SOURCES = {
     "RemoteOK", "Remotive", "We Work Remotely", "Himalayas", "Jobicy", "Working Nomads", "HN Who's Hiring",
-    "HN Jobs", "Python.org Jobs", "Jobspresso", "LaraJobs",                    # open RSS / JSON feeds
+    "HN Jobs", "Python.org Jobs", "Jobspresso", "LaraJobs", "V2EX Jobs", "V2EX Remote", "VueJobs", "CryptoJobsList",                    # open RSS / JSON feeds
     "Greenhouse", "Lever", "Ashby", "Recruitee", "Personio", "Career pages",     # employers' own public boards
     "Sweden (AF)",                                                              # JobTech open data
     "EURES (EU)",                                                               # EU Commission service

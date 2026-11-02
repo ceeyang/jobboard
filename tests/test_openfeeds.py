@@ -51,3 +51,31 @@ def test_new_sources_are_public_and_ids_unique():
     assert len(set(ids)) == len(ids) and all(-100 < i < 0 for i in ids)
     assert {"GitHub: CocoaHeadsBrasil/vagas", "GitHub: phpdevbr/vagas"} <= names
     assert all(mode.kind(n, i) in ('site', 'gov', 'github') for n, i, *_ in run.all_sources('public'))
+
+
+def test_v2ex_topics_become_jobs():
+    rows = [{"id": 11, "title": "[远程/全职] 招聘后端工程师", "url": "https://www.v2ex.com/t/11", "content": "职责：后端开发", "content_rendered": "<p>职责：后端开发</p>", "created": 1793000000},
+            {"id": 12, "title": "", "created": 1793000000}, {"id": 13, "title": "x", "deleted": True, "created": 1793000000}]
+    (j,) = openfeeds.v2ex("jobs", lambda u: rows)
+    assert j["id"] == "v211" and j["remote"] and j["text"] == "职责：后端开发" and j["date"].startswith("2026-")
+    assert openfeeds.v2ex("remote", lambda u: rows[:1])[0]["remote"]
+
+
+VUE = '''<rss><channel><item><title>Frontend Engineer II</title><link>https://vuejobs.com/jobs/openly-fe?utm_source=rssfeed</link>
+<guid>https://vuejobs.com/jobs/openly-fe</guid><description>&lt;p&gt;&lt;strong&gt;Employer:&lt;/strong&gt; Openly&lt;/p&gt;&lt;p&gt;&lt;strong&gt;Location:&lt;/strong&gt; Remote&lt;/p&gt;&amp;nbsp;</description>
+<pubDate>Mon, 02 Nov 2026 14:39:38 +0000</pubDate></item></channel></rss>'''
+
+
+def test_vuejobs_reads_employer_and_location_and_survives_html_entities():
+    (j,) = openfeeds.vuejobs(lambda u: VUE.replace("&amp;nbsp;", "&nbsp;"))
+    assert (j["company"], j["location"], j["remote"], j["id"]) == ("Openly", "Remote", True, "https://vuejobs.com/jobs/openly-fe")
+
+
+CJL = '''<rss xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:media="http://search.yahoo.com/mrss/"><channel><item><title>Backend Engineer</title>
+<link>https://cryptojobslist.com/jobs/be-at-acme</link><dc:creator>Acme</dc:creator><location>Remote (Worldwide)</location>
+<description>&lt;p&gt;Build&lt;/p&gt;</description></item></channel></rss>'''
+
+
+def test_cryptojobslist():
+    (j,) = openfeeds.cryptojobslist(lambda u: CJL)
+    assert (j["company"], j["remote"], j["tags"]) == ("Acme", True, ["Web3"]) and j["date"]

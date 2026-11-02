@@ -1,5 +1,6 @@
 """More open job feeds that need no account: Hacker News job posts (YC companies), the Python Software Foundation job
-board, Jobspresso and LaraJobs. Verified 2026-10-28 (all answered with current postings).
+board, Jobspresso and LaraJobs (verified 2026-10-28), plus V2EX (Chinese developer community: jobs + remote nodes), VueJobs
+and CryptoJobsList (verified 2026-11-02; all answered with postings from the last days).
 python.org publishes no date in its feed: the first time we see a posting counts as its date (the database keeps the earliest)."""
 import re
 import xml.etree.ElementTree as ET
@@ -79,10 +80,66 @@ def larajobs(get_text=None):
     return out
 
 
+def _tolerant_xml(text: str):
+    """Some feeds contain HTML entities (&nbsp; ...) that are not legal XML: escape every bare ampersand first."""
+    return ET.fromstring(re.sub(r"&(?!(?:amp|lt|gt|quot|apos|#\d+|#x[0-9a-fA-F]+);)", "&amp;", text).encode("utf-8"))
+
+
+def v2ex(node: str, get_json=None):
+    """V2EX's public API: the 10 newest topics of a node. A topic is a free-text job post (no company field)."""
+    rows = (get_json or http.get_json)(f"https://www.v2ex.com/api/topics/show.json?node_name={node}")
+    out = []
+    for t in rows:
+        title = (t.get("title") or "").strip()
+        if not title or t.get("deleted"):
+            continue
+        body = plain(t.get("content_rendered") or t.get("content"))
+        out.append({"id": f"v2{t['id']}", "url": t.get("url") or f"https://www.v2ex.com/t/{t['id']}", "title": title[:140], "company": "",
+                    "location": "", "tags": [], "salary": None, "text": body, "date": _iso(t.get("created")),
+                    "remote": bool(re.search(r"远程|remote|wfh|居家|在家", title + " " + body[:300], re.I)) or node == "remote"})
+    return out
+
+
+def vuejobs(get_text=None):
+    root = _tolerant_xml((get_text or http.get_text)("https://vuejobs.com/feed"))
+    out = []
+    for it in root.iterfind("channel/item"):
+        link = (it.findtext("guid") or it.findtext("link") or "").split("?")[0]
+        raw = it.findtext("description") or ""
+        if not link:
+            continue
+        emp = re.search(r"Employer:</strong>\s*([^<]+)", raw)
+        loc = re.search(r"Location:</strong>\s*([^<]+)", raw)
+        out.append({"id": link, "url": link, "title": (it.findtext("title") or "").strip(), "company": emp.group(1).strip() if emp else "",
+                    "location": loc.group(1).strip() if loc else "", "tags": ["Vue"], "salary": None, "text": plain(raw),
+                    "date": _iso(it.findtext("pubDate")), "remote": bool(loc and re.search(r"remote", loc.group(1), re.I))})
+    return out
+
+
+def cryptojobslist(get_text=None):
+    """Web3 jobs. The feed has no dates: the first sighting counts (the database keeps the earliest)."""
+    root = _tolerant_xml((get_text or http.get_text)("https://cryptojobslist.com/rss"))
+    out = []
+    for it in root.iterfind("channel/item"):
+        link = it.findtext("link")
+        if not link:
+            continue
+        g = lambda tag: next((c.text or "" for c in it if c.tag.split("}")[-1] == tag), "")
+        loc = g("location").strip()
+        out.append({"id": link, "url": link, "title": (it.findtext("title") or "").strip(), "company": g("creator").strip(),
+                    "location": loc, "tags": ["Web3"], "salary": None, "text": plain(g("description")), "date": _iso(None),
+                    "remote": bool(re.search(r"remote|anywhere", loc, re.I))})
+    return out
+
+
 # name, fake id (-50..-59: unused ranges), min seconds between runs, adapter
 SOURCES = [
     ("HN Jobs",          -50, 3 * 3600, hn_jobs),
     ("Python.org Jobs",  -51, 6 * 3600, python_org),
     ("Jobspresso",       -52, 3 * 3600, jobspresso),
     ("LaraJobs",         -53, 6 * 3600, larajobs),
+    ("V2EX Jobs",        -54, 3 * 3600, lambda: v2ex("jobs")),
+    ("V2EX Remote",      -55, 3 * 3600, lambda: v2ex("remote")),
+    ("VueJobs",          -56, 6 * 3600, vuejobs),
+    ("CryptoJobsList",   -57, 6 * 3600, cryptojobslist),
 ]
