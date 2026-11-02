@@ -63,10 +63,12 @@ def _public_links(sources: list[dict]) -> list[str]:
 def scrub_db(con) -> int:
     """Rewrite stored rows so that the database itself (committed to a public branch) holds only excerpts."""
     n = 0
-    for r in con.execute("SELECT id, text, sources FROM jobs").fetchall():
+    for r in con.execute("SELECT id, text, title, company, location, sources FROM jobs").fetchall():
         links = _public_links(public_sources(json.loads(r["sources"])))
-        con.execute("UPDATE jobs SET text=?, contacts=?, note='' WHERE id=?",
-                    (excerpt(r["text"]), json.dumps({"telegram": [], "email": [], "links": links}), r["id"]))
+        con.execute("UPDATE jobs SET text=?, title=?, company=?, location=?, contacts=?, note='' WHERE id=?",
+                    (excerpt(r["text"]), redact(r["title"]), redact(r["company"]) if r["company"] else r["company"],
+                     redact(r["location"]) if r["location"] else r["location"],
+                     json.dumps({"telegram": [], "email": [], "links": links}), r["id"]))
         n += 1
     con.commit()
     return n
@@ -388,7 +390,9 @@ def build_from_feed(base: str, out: str | Path, cfg: dict, now: datetime | None 
             continue
         a = parse.analyze(j["text"], j.get("hint", ""), structured=j.get("structured", True))
         if a["score"] >= 1:
-            kept.append({**j, "score": a["score"], "tags": a["tags"]})
+            # the feed may have been written before the current redaction rules existed: clean every free-text field again
+            clean = {f: redact(j.get(f)) for f in ("text", "title", "company", "location", "salary") if j.get(f)}
+            kept.append({**j, **clean, "score": a["score"], "tags": a["tags"]})
     meta = feed["meta"]
     return write_site(out, kept, now=datetime.fromisoformat(feed["generated_at"]), window_days=meta.get("window_days", WINDOW_DAYS),
                       site=cfg["site"], chats=feed["channels"], chips=profile_config.roles_for_ui(cfg), state=meta.get("sources", []),

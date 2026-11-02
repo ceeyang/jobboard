@@ -292,3 +292,21 @@ def test_redact_removes_chinese_style_contacts(text, gone):
 def test_redact_keeps_salaries_and_years():
     t = "薪资 20000-40000 元，2026 年入职，3-5 年经验，1000000 用户"
     assert publish.redact(t) == t
+
+
+def test_build_from_feed_cleans_contacts_that_an_older_feed_still_carried(isolated, tmp_path):
+    from jobboard import profile_config
+    src = tmp_path / "src"
+    add(isolated, "Flutter Dev", "Flutter developer", [("RemoteOK", -1, "https://r/1")])
+    publish.export(isolated, src)
+    jobs = json.loads((src / "data/jobs.json").read_text(encoding="utf-8"))
+    jobs["jobs"][0]["text"] = "Flutter developer 微信：Lforngift 电话 13812345678"
+    (src / "data/jobs.json").write_text(json.dumps(jobs, ensure_ascii=False), encoding="utf-8")
+    cfg = profile_config.validate(profile_config.load_preset("mobile"))
+    profile_config.apply(cfg)
+    try:
+        publish.build_from_feed(str(src / "data"), tmp_path / "out", cfg)
+    finally:
+        profile.set_rules(None)
+    blob = (tmp_path / "out/data/jobs.json").read_text(encoding="utf-8")
+    assert "Lforngift" not in blob and "13812345678" not in blob
