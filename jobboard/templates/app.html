@@ -302,9 +302,6 @@ body.detail:not(.pinned) .dscrim{display:block;position:fixed;inset:0;background
   <div class="sec">发布时间</div>
   <div class="seg" id="segSince" role="group" aria-label="发布时间"></div>
 
-  <div class="sec">按日期 <button data-clear="day" id="clrDay" hidden>清除</button></div>
-  <div id="days"></div>
-
   <div class="sec">条件</div>
   <label class="switch">仅远程<input type="checkbox" id="fRemote"></label>
   <label class="switch" title="只显示远程岗位，并去掉标明「仅限美国 / 仅限欧洲 / US only / 必须位于某国」等限制居住地的岗位。没写限制的算全球可申请；地点写了具体城市的不算">🌍 全球远程<input type="checkbox" id="fGeo"></label>
@@ -394,10 +391,10 @@ async function api(method,url,body){
 }
 const LEVELS=[[1,"宽松"],[5,"推荐"],[10,"严格"]];
 const SORTS=[["score","最匹配"],["new","最新"]];
-const SINCES=[["","不限"],["1d","1天"],["3d","3天"],["7d","1周"],["30d","1月"],["90d","3月"]];
-const SINCE_MS={"1d":864e5,"3d":3*864e5,"7d":7*864e5,"30d":30*864e5,"90d":90*864e5};
+const SINCES=[["","不限"],["1d","1天"],["3d","3天"],["7d","1周"],["30d","1月"]];
+const SINCE_MS={"1d":864e5,"3d":3*864e5,"7d":7*864e5,"30d":30*864e5};
 const PAGE=40,LS="jb2";
-const DEF={sideCollapsed:false,status:"all",min:5,since:"",roles:[],srcs:[],remote:false,hideRisk:false,hideGeo:false,visa:false,q:"",sort:"score",dense:false,theme:"auto",closed:{telegram:true,countries:true},pin:false,countries:[],day:""};
+const DEF={sideCollapsed:false,status:"all",min:5,since:"",roles:[],srcs:[],remote:false,hideRisk:false,hideGeo:false,visa:false,q:"",sort:"score",dense:false,theme:"auto",closed:{telegram:true,countries:true},pin:false,countries:[]};
 const $=(s,r=document)=>r.querySelector(s);
 const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 let S;try{S={...DEF,...JSON.parse(localStorage.getItem(LS)||"{}")}}catch(e){S={...DEF}}
@@ -491,8 +488,7 @@ const whenText=j=>dateOnly(j)?utc(j.posted_at).toLocaleDateString([],{timeZone:"
 const globalRemote=j=>j.remote&&j.geo!=="restricted"&&(j.geo==="worldwide"||!j.location||/^\s*(remote|anywhere|worldwide|global|distributed|work from anywhere)\b/i.test(j.location));
 function match(j,s,skip){
   if(j.score<s.min)return false;
-  if(skip!=="day"&&s.day&&dayKey(j)!==s.day)return false;
-  if(!s.day&&s.since&&pt(j)<Date.now()-SINCE_MS[s.since])return false;
+  if(s.since&&pt(j)<Date.now()-SINCE_MS[s.since])return false;
   if(skip!=="status"&&(s.status==="all"?j.status==="ignored":j.status!==s.status))return false;
   if(s.roles.length&&!j.tags.some(t=>has(s.roles,t)))return false;
   if(skip!=="srcs"&&s.srcs.length&&!j.sources.some(x=>has(s.srcs,x.chat)))return false;
@@ -525,11 +521,6 @@ function renderSide(){
   const sq=SET.saved_searches||[],cur=S.q.trim(),already=sq.some(x=>x.q===cur);
   $("#savedq").innerHTML=(sq.length?`<div class="chips">${sq.map((x,i)=>`<span class="chipbtn ${S.q===x.q?"on":""}" data-sq="${i}" role="button" tabindex="0" title="${esc(x.q)}">${esc(x.name)}<b class="x" data-sqdel="${i}" aria-label="删除" title="删除">×</b></span>`).join("")}</div>`:'<div class="count" style="padding:0 6px;font-size:12.5px">在搜索框输入关键词，可保存为常用搜索</div>')+
     (cur&&!already?`<div class="saveq"><input id="sqname" placeholder="名称" value="${esc(cur.slice(0,14))}" maxlength="30" aria-label="常用搜索名称"><button data-sqsave>保存</button></div>`:"");
-  const dbase=filtered("day"),dcount={};dbase.forEach(j=>{const k=dayKey(j);dcount[k]=(dcount[k]||0)+1});
-  const WD="日一二三四五六",dayList=[...Array(8)].map((_,i)=>{const d=new Date(Date.now()-i*864e5),k=d.toLocaleDateString("sv-SE");return [k,i===0?"今天":i===1?"昨天":k.slice(5)+" 周"+WD[d.getDay()]]});
-  $("#days").innerHTML=`<div class="rows" style="margin:0">${dayList.map(([k,l])=>`<div class="srow ${S.day===k?"on":""} ${dcount[k]?"":"zero"}" data-day="${k}" role="radio" aria-checked="${S.day===k}" tabindex="0"><span class="chk"></span><b>${l}</b><i>${dcount[k]||0}</i><span></span></div>`).join("")}</div>
-    <div class="field" style="margin:6px 4px 0"><label class="count" for="dayPick">其他日期</label><input id="dayPick" class="inp" type="date" value="${S.day&&!dayList.some(x=>x[0]===S.day)?S.day:""}" max="${dayList[0][0]}" style="flex:1;padding:4px 8px"></div>`;
-  $("#clrDay").hidden=!S.day;
   const cbase=filtered("countries"),cc={};cbase.forEach(j=>countryOf(j).forEach(c=>cc[c]=(cc[c]||0)+1));
   const clist=Object.keys(cc).sort((a,b)=>(a==="XX")-(b==="XX")||cc[b]-cc[a]||COUNTRY_NAME[a].localeCompare(COUNTRY_NAME[b],"zh"));
   S.countries.forEach(c=>{if(!clist.includes(c))clist.push(c)});                // a selected country stays visible even at 0
@@ -578,7 +569,7 @@ function renderTabs(){
 function renderActive(){
   const f=[];
   if(S.q.trim())f.push(["q","搜索："+S.q.trim().slice(0,20)]);
-  if(S.day)f.push(["day","日期 "+S.day.slice(5)]);else if(S.since)f.push(["since","最近 "+SINCES.find(x=>x[0]===S.since)[1]]);
+  if(S.since)f.push(["since","最近 "+SINCES.find(x=>x[0]===S.since)[1]]);
   S.roles.forEach(r=>f.push(["role:"+r,lab(r)]));
   let rest=S.srcs.slice();
   for(const k of ["site","gov","github","telegram"]){            // a fully selected group is one chip, not N
@@ -777,7 +768,7 @@ function applySide(){
 const toggleSide=()=>{S.sideCollapsed=!S.sideCollapsed;save();applySide()};
 const applyTheme=()=>{if(S.theme==="auto")document.documentElement.removeAttribute("data-theme");else document.documentElement.setAttribute("data-theme",S.theme)};
 /* The filters live in the address (#q=flutter&r=ios,android&min=5&since=7d&remote=1&visa=1): a search can be shared or bookmarked. */
-const SHARE_KEYS=[["q","q","s"],["roles","r","a"],["srcs","src","a"],["countries","c","a"],["min","min","n"],["since","since","s"],["day","day","s"],["sort","sort","s"],["remote","remote","b"],["hideGeo","geo","b"],["visa","visa","b"],["hideRisk","risk","b"]];
+const SHARE_KEYS=[["q","q","s"],["roles","r","a"],["srcs","src","a"],["countries","c","a"],["min","min","n"],["since","since","s"],["sort","sort","s"],["remote","remote","b"],["hideGeo","geo","b"],["visa","visa","b"],["hideRisk","risk","b"]];
 function hashOf(){
   const p=new URLSearchParams();
   for(const [k,n,t] of SHARE_KEYS){const v=S[k];if(JSON.stringify(v)===JSON.stringify(DEF[k]))continue;p.set(n,t==="a"?v.join(","):t==="b"?"1":v)}
@@ -786,7 +777,7 @@ function hashOf(){
 function readHash(){
   const h=location.hash.replace(/^#\??/,"");if(!h)return;
   const p=new URLSearchParams(h);if(![...p.keys()].some(n=>SHARE_KEYS.some(x=>x[1]===n)))return;
-  Object.assign(S,{q:"",roles:[],srcs:[],countries:[],min:DEF.min,since:"",day:"",sort:"score",remote:false,hideGeo:false,visa:false,hideRisk:false});
+  Object.assign(S,{q:"",roles:[],srcs:[],countries:[],min:DEF.min,since:"",sort:"score",remote:false,hideGeo:false,visa:false,hideRisk:false});
   for(const [k,n,t] of SHARE_KEYS){if(!p.has(n))continue;const v=p.get(n);
     S[k]=t==="a"?v.split(",").filter(Boolean):t==="b"?v==="1":t==="n"?(+v||DEF[k]):v}
   if(!SINCE_MS[S.since])S.since="";if(!SORTS.some(x=>x[0]===S.sort))S.sort="score";
@@ -803,7 +794,7 @@ document.addEventListener("click",e=>{
   if(sqd){e.stopPropagation();return saveSearches(SET.saved_searches.filter((_,i)=>i!==+sqd.dataset.sqdel))}
   const sqc=e.target.closest("[data-sq]");
   if(sqc){const it=SET.saved_searches[+sqc.dataset.sq];if(it){S.q=S.q===it.q?"":it.q;$("#q").value=S.q;change()}return}
-  const t=e.target.closest("button,[data-src],[data-country],[data-day]");
+  const t=e.target.closest("button,[data-src],[data-country]");
   if(!t){                                                      // click on the card body itself → show it on the right
     if(e.target.closest("select,summary,input,label"))return;
     const c=e.target.closest(".card");if(c)openDetail(+c.dataset.id);
@@ -812,13 +803,12 @@ document.addEventListener("click",e=>{
   const d=t.dataset;
   if(d.s){S.status=d.s;return change()}
   if(d.m){S.min=+d.m;return change()}
-  if(d.since!==undefined){S.since=d.since;S.day="";return change()}
+  if(d.since!==undefined){S.since=d.since;return change()}
   if(d.r){S.roles=toggle(S.roles,d.r);return change()}
   if(d.rolesmore!==undefined){rolesOpen=!rolesOpen;return renderSide()}
   if(d.share!==undefined){return shareLink()}
   if(d.sort){S.sort=d.sort;return change()}
   if(d.src){S.srcs=toggle(S.srcs,d.src);return change()}
-  if(d.day){S.day=S.day===d.day?"":d.day;return change()}
   if(d.country){S.countries=toggle(S.countries,d.country);return change()}
   if(d.countriesmore!==undefined){countriesOpen=!countriesOpen;return renderSide()}
   if(d.sqsave!==undefined){const q=S.q.trim(),name=($("#sqname")?.value||q).trim()||q;return saveSearches([...(SET.saved_searches||[]),{name,q}])}
@@ -828,9 +818,9 @@ document.addEventListener("click",e=>{
     const names=kindNames(d.grp);
     const allOn=names.every(n=>has(S.srcs,n));S.srcs=allOn?S.srcs.filter(n=>!names.includes(n)):[...new Set([...S.srcs,...names])];return change()}
   if(d.clear){S[d.clear]=[];return change()}
-  if(d.clearall!==undefined){Object.assign(S,{q:"",since:"",day:"",roles:[],srcs:[],countries:[],remote:false,hideRisk:false,hideGeo:false,visa:false});$("#q").value="";return change()}
+  if(d.clearall!==undefined){Object.assign(S,{q:"",since:"",roles:[],srcs:[],countries:[],remote:false,hideRisk:false,hideGeo:false,visa:false});$("#q").value="";return change()}
   if(d.rm){const k=d.rm;
-    if(k==="q"){S.q="";$("#q").value=""}else if(k==="day")S.day="";else if(k==="since")S.since="";else if(k.startsWith("role:"))S.roles=S.roles.filter(x=>x!==k.slice(5));
+    if(k==="q"){S.q="";$("#q").value=""}else if(k==="since")S.since="";else if(k.startsWith("role:"))S.roles=S.roles.filter(x=>x!==k.slice(5));
     else if(k.startsWith("grp:")){const ns=kindNames(k.slice(4));S.srcs=S.srcs.filter(x=>!ns.includes(x))}
     else if(k.startsWith("country:"))S.countries=S.countries.filter(x=>x!==k.slice(8));
     else if(k.startsWith("src:"))S.srcs=S.srcs.filter(x=>x!==k.slice(4));else if(k==="remote")S.remote=false;else if(k==="risk")S.hideRisk=false;else if(k==="geo")S.hideGeo=false;else if(k==="visa")S.visa=false;
@@ -862,7 +852,6 @@ document.addEventListener("change",e=>{
 });
 document.addEventListener("change",e=>{
   if(e.target.matches("[data-sel]"))return setStatus(+e.target.closest(".card").dataset.id,e.target.value);
-  if(e.target.id==="dayPick"){S.day=e.target.value||"";return change()}
   if(e.target.id==="fRemote"){S.remote=e.target.checked;change()}
   if(e.target.id==="fRisk"){S.hideRisk=e.target.checked;change()}
   if(e.target.id==="fGeo"){S.hideGeo=e.target.checked;change()}
