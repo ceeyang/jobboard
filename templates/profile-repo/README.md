@@ -2,7 +2,7 @@
 
 __DESCRIPTION__
 
-这个站点是**自动生成**的：它不抓取任何招聘网站，只读取聚合站（__AGGREGATE_URL__）每次更新后公开的数据，
+这个站点是**自动生成**的：它不抓取任何招聘网站，只读取[聚合站](__AGGREGATE_URL__)每次更新后公开的数据，
 再用本仓库的 [`config/profile.json`](config/profile.json)（预设 `__PRESET__`）重新筛选和打分。
 
 ## 它多久更新一次？
@@ -17,12 +17,12 @@ __DESCRIPTION__
    `exclude_title` 里的词出现在标题里，这个岗位就不会被"泛称标题"（如 Software Engineer）捞回来。
 2. 提交后到 **Actions → update → Run workflow**，一两分钟后站点就更新了。
 3. 想先在本地试关键词：`python -m jobboard.cli profile --path config/profile.json --try "Senior Go Engineer" "Sales Manager"`
-   （需要先 clone 引擎仓库 `__ENGINE_REPO__`）。
+   （需要先 clone 引擎仓库 [`__ENGINE_REPO__`](https://github.com/__ENGINE_REPO__)）。
 
 可用的预设：`frontend-mobile`、`frontend`、`mobile`、`fullstack`、`backend`、`data-ai`、`devops`、`qa`、`security`、`web3`、`game`、
 `product`、`design`、`management`、`all-tech`。换预设：`python -m jobboard.cli init --preset backend --force --out config/profile.json`。
 
-> 注意：这个站点只能在聚合站已收集的岗位里筛选。关键词在聚合站完全没收集到的领域，需要用引擎仓库自己抓取（见 `__ENGINE_REPO__` 的 README）。
+> 注意：这个站点只能在聚合站已收集的岗位里筛选。关键词在聚合站完全没收集到的领域，需要用引擎仓库自己抓取（见 [`__ENGINE_REPO__`](https://github.com/__ENGINE_REPO__) 的 README）。
 
 ## 隐私
 

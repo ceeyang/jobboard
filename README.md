@@ -116,7 +116,7 @@ also apply it on the fly).
   No contact handles/e-mails (a final check fails the build if one slips through), no full texts, no notes.
 - **Read-only.** Statuses (interested/applied/...) and saved searches live in *your browser* only. Roles, refresh and digest
   are edited in the local edition.
-- Change the whitelist or window in `jobboard/mode.py` / `publish.py` (`WINDOW_DAYS = 45`), then push.
+- Change the whitelist or window in `jobboard/mode.py` / `publish.py` (`WINDOW_DAYS = 90`), then push.
 - Pages must stay public on a free account; what is published is public to everybody, so keep the whitelist conservative.
 - If GitHub pauses the schedule after 60 days without repository activity, re-enable it on the Actions page.
 

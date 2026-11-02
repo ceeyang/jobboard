@@ -55,8 +55,8 @@ else
   LOGIN=bot; UID_NUM=0
 fi
 
-publish_dir() {   # <dir> <repo> <description> <pages: workflow|branch>
-  local dir="$1" repo="$2" desc="$3" pages="$4"
+publish_dir() {   # <dir> <repo> <description> <pages: workflow|branch|none> [homepage]
+  local dir="$1" repo="$2" desc="$3" pages="$4" home="${5:-}"
   say "$ORG/$repo"
   if [ "$DRY" = 1 ]; then echo "   [dry-run] create or update $ORG/$repo from $dir, enable Pages ($pages)"; return; fi
   gh repo view "$ORG/$repo" >/dev/null 2>&1 || gh repo create "$ORG/$repo" --public --description "$desc" >/dev/null
@@ -69,6 +69,7 @@ publish_dir() {   # <dir> <repo> <description> <pages: workflow|branch>
     git commit -q -m "Deploy $repo" -m "Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>"
     git push -q --force "https://github.com/$ORG/$repo.git" main:main
   )
+  [ -z "$home" ] || gh repo edit "$ORG/$repo" --homepage "$home" >/dev/null 2>&1 || true   # the link in the repository's About box
   if [ "$pages" = none ]; then return; fi
   if [ "$pages" = workflow ]; then
     gh api -X POST "repos/$ORG/$repo/pages" -f build_type=workflow >/dev/null 2>&1 \
@@ -85,7 +86,7 @@ run_workflow() {  # <repo> -> prints the run id
 }
 
 # 1. the engine first: the role sites read the data feed it publishes
-publish_dir "$WORK/engine" "$ENGINE" "Aggregate tech job board + data feed (engine for the role sites)" workflow
+publish_dir "$WORK/engine" "$ENGINE" "Aggregate tech job board + data feed (engine for the role sites)" workflow "https://$ORG.github.io/$ENGINE/"
 say "first run of the aggregate site (a few minutes: it is the only repository that scrapes)"
 if [ "$DRY" = 0 ]; then
   id="$(run_workflow "$ENGINE")"
@@ -104,7 +105,7 @@ for p in json.load(open(sys.argv[1]))['profiles']:
     print(p['repo'], p['description'], sep='\t')
 " "$WORK/manifest.json" > "$WORK/profiles.tsv"
 while IFS=$'\t' read -r repo desc; do
-  publish_dir "$WORK/$repo" "$repo" "$desc" workflow
+  publish_dir "$WORK/$repo" "$repo" "$desc" workflow "https://$ORG.github.io/$repo/"
   [ "$DRY" = 1 ] || run_workflow "$repo" >/dev/null
 done < "$WORK/profiles.tsv"
 
@@ -117,7 +118,7 @@ fi
 
 # 3. landing page at https://<org>.github.io/ and the text shown at github.com/<org>
 if [ "$LANDING" = 1 ]; then
-  publish_dir "$WORK/landing" "$ORG.github.io" "Tech job boards by role" branch
+  publish_dir "$WORK/landing" "$ORG.github.io" "Tech job boards by role" branch "https://$ORG.github.io/"
   publish_dir "$WORK/orgprofile" ".github" "Organisation profile" none
 fi
 

@@ -26,7 +26,7 @@ def main(argv=None):
                    help="public = only sources allowed on the public site, no Telegram, database scrubbed afterwards")
     ex = sub.add_parser("export", help="write the static, public-safe site (GitHub Pages) to a folder")
     ex.add_argument("--out", default="site")
-    ex.add_argument("--days", type=int, default=45, help="only jobs posted within this many days")
+    ex.add_argument("--days", type=int, default=90, help="only jobs posted within this many days")
     d = sub.add_parser("digest", help="send the daily digest to your Saved Messages")
     d.add_argument("--dry-run", action="store_true", help="print instead of sending")
     dc = sub.add_parser("discover", help="find company job boards (Greenhouse/Lever/Ashby/...) to follow")

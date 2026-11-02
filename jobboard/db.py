@@ -157,8 +157,8 @@ def company_result(con, ats: str, slug: str, ok: bool, name: str | None = None) 
                     "WHERE ats=? AND slug=?", (MAX_FAILS, ats, slug))
 
 
-def prune(con, days: int = 60, now: datetime | None = None) -> int:
-    """Delete jobs first posted more than `days` ago (the public site only shows the last 45): keeps the database small."""
+def prune(con, days: int = 130, now: datetime | None = None) -> int:
+    """Delete jobs first posted more than `days` ago (the public site shows the last 90): keeps the database small."""
     cutoff = ((now or datetime.now(timezone.utc)) - timedelta(days=days)).isoformat()
     n = con.execute("DELETE FROM jobs WHERE julianday(posted_at) < julianday(?)", (cutoff,)).rowcount
     con.commit()

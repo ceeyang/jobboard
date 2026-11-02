@@ -15,7 +15,7 @@ from xml.sax.saxutils import escape as xml_escape
 
 from jobboard import db, health, mode, parse, profile_config, roles
 
-WINDOW_DAYS, EXCERPT, CHUNK = 45, 600, 400     # jobs per data file: the page shows the first one at once and loads the rest in the background
+WINDOW_DAYS, EXCERPT, CHUNK = 90, 600, 400     # jobs per data file: the page shows the first one at once and loads the rest in the background
 ROOT = Path(__file__).parent
 _EMAIL = re.compile(r"[\w.+-]+@[\w-]+(?:\.[\w-]+)+")
 _HANDLE = re.compile(r"(?<![\w/@])@[A-Za-z][A-Za-z0-9_]{3,31}\b")

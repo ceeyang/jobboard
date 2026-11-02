@@ -46,7 +46,7 @@ def test_export_keeps_only_public_sources_and_no_contacts(isolated, tmp_path):
 
 def test_ids_are_stable_and_window_applies(isolated, tmp_path):
     add(isolated, "Flutter Dev New", "Flutter developer", [("RemoteOK", -1, "https://r/1")], days_ago=2)
-    add(isolated, "Flutter Dev Old", "Flutter developer", [("RemoteOK", -1, "https://r/2")], days_ago=60)
+    add(isolated, "Flutter Dev Old", "Flutter developer", [("RemoteOK", -1, "https://r/2")], days_ago=120)
     publish.export(isolated, tmp_path / "a")
     publish.export(isolated, tmp_path / "b")
     a = json.loads((tmp_path / "a/data/jobs.json").read_text())["jobs"]
