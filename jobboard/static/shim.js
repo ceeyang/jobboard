@@ -18,16 +18,16 @@
       if (!generated) return "公开站点 · 正在加载…";
       if (all && all.length < total) return `正在加载全部岗位 ${all.length} / ${total} …`;
       const h = Math.max(0, Math.round((Date.now() - new Date(generated)) / 36e5));
-      return `${h < 1 ? "刚刚更新" : h + " 小时前更新"} · 自动更新（GitHub 定时不保证准点）`;
+      return h < 1 ? "刚刚更新" : h + " 小时前更新";   // the intro and about.html explain that GitHub's schedule is not punctual
     },
   };
   // Read-only edition: no manual refresh / settings (data is rebuilt hourly), and a short, dismissible explanation.
   const style = document.createElement("style");
   style.textContent = "#refresh,#settingsBtn{display:none!important}" +
-    ".intro{display:flex;gap:12px;align-items:flex-start;margin:4px 0 14px;padding:12px 14px;border:1px solid var(--line);" +
-    "background:var(--panel);border-radius:var(--r);font-size:13px;line-height:1.55;color:var(--mut)}" +
-    ".intro a{color:var(--ac)}.intro b{color:var(--fg)}.intro button{margin-left:auto;flex:none;border:1px solid var(--line);background:transparent;" +
-    "color:var(--fg);border-radius:8px;padding:4px 10px;cursor:pointer;font-size:12.5px}";
+    ".intro{display:flex;gap:12px;align-items:center;margin:0 0 16px;padding:10px 12px 10px 16px;border:1px solid var(--acline,var(--line));" +
+    "background:var(--acsoft);border-radius:12px;font-size:13px;line-height:1.55;color:var(--fg2,var(--mut));max-width:1120px}" +
+    ".intro a{color:var(--ac2,var(--ac));font-weight:500}.intro b{color:var(--fg)}.intro button{margin-left:auto;flex:none;border:1px solid var(--line);background:var(--panel);" +
+    "color:var(--fg);border-radius:8px;padding:0 12px;height:30px;cursor:pointer;font-size:12.5px;font-weight:600}";
   document.head.appendChild(style);
   document.addEventListener("DOMContentLoaded", () => {
     const theme = document.querySelector("#theme");   // always available: where the data comes from, how fresh it is, how to ask for removal
