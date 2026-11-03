@@ -147,6 +147,30 @@ def test_lever_ashby_recruitee_personio(isolated, monkeypatch):
     assert pn[0]["company"] == "Acme GmbH" and pn[0]["url"] == "https://acme.jobs.personio.de/job/55" and pn[0]["text"] == "Build apps"
 
 
+
+WORKABLE = {"name": "Hugging Face", "jobs": [
+    {"title": "Senior Android Engineer", "shortcode": "81B4", "url": "https://apply.workable.com/j/81B4", "published_on": "2026-10-29",
+     "telecommuting": True, "department": "Mobile", "employment_type": "Full-time", "function": "Engineering",
+     "locations": [{"city": "Paris", "region": "Île-de-France", "country": "France", "hidden": False}, {"city": "Secret", "hidden": True}]},
+    {"title": "Office Manager", "shortcode": "99", "published_on": "2026-10-29"}]}
+TEAMTAILOR = """<?xml version="1.0" encoding="UTF-8"?><rss version="2.0" xmlns:tt="https://teamtailor.com/locations"><channel><title>Polestar</title>
+<item><title>iOS Developer</title><description>&lt;p&gt;Swift &amp;amp; UIKit&lt;/p&gt;</description><pubDate>Thu, 29 Oct 2026 13:25:57 +0100</pubDate>
+<link>https://polestar.teamtailor.com/jobs/1-ios</link><remoteStatus>fully</remoteStatus><guid>g-1</guid>
+<tt:locations><tt:location><tt:city>Gothenburg</tt:city><tt:country>Sweden</tt:country></tt:location></tt:locations><tt:department>Apps</tt:department></item>
+<item><title>Accountant</title><link>https://polestar.teamtailor.com/jobs/2</link></item></channel></rss>"""
+
+
+def test_workable_and_teamtailor(isolated, monkeypatch):
+    add(isolated, "workable", "huggingface")
+    add(isolated, "teamtailor", "polestar")
+    fake(monkeypatch, {"apply.workable.com/api/v1/widget/accounts/huggingface": WORKABLE, "polestar.teamtailor.com/jobs.rss": TEAMTAILOR})
+    src = {n: fn for n, _, _, fn in ats.SOURCES}
+    (wk,), (tt,) = src["Workable"](), src["Teamtailor"]()
+    assert (wk["id"], wk["company"], wk["location"], wk["remote"]) == ("wk81B4", "Hugging Face", "Paris, Île-de-France, France", True)
+    assert wk["date"].startswith("2026-10-29") and wk["tags"] == ["Mobile", "Full-time"]
+    assert (tt["company"], tt["location"], tt["remote"], tt["text"], tt["tags"]) == ("Polestar", "Gothenburg, Sweden", True, "Swift & UIKit", ["Apps"])
+    assert tt["date"] == "2026-10-29T12:25:57+00:00" and tt["url"].endswith("/jobs/1-ios")
+
 def test_items_flow_through_run_and_score(isolated, monkeypatch):
     add(isolated, "ashby", "acme")
     fake(monkeypatch, {"api.ashbyhq.com": ASHBY})
@@ -196,6 +220,8 @@ def test_extract_slugs_from_links_and_pairs():
     lever: manual-one"""
     assert discover.extract(text) == {("greenhouse", "acme"), ("greenhouse", "widgets"), ("lever", "foo-bar"), ("ashby", "ramp"),
                                       ("recruitee", "bunq"), ("personio", "acme"), ("lever", "manual-one")}
+    more = "https://apply.workable.com/huggingface/ https://apply.workable.com/j/81B46579FE https://polestar.teamtailor.com/jobs/1 https://app.teamtailor.com/x"
+    assert discover.extract(more) == {("workable", "huggingface"), ("teamtailor", "polestar")}
 
 
 def test_discover_run_validates_candidates_before_storing(isolated, tmp_path):
@@ -218,6 +244,10 @@ def test_probe_per_ats(monkeypatch):
                        "personio.de": "<?xml version='1.0'?><workzag-jobs></workzag-jobs>"})
     assert discover.probe("greenhouse", "yes") == (True, "Yes Inc") and discover.probe("greenhouse", "no") == (False, None)
     assert all(discover.probe(a, "x")[0] for a in ("lever", "ashby", "recruitee", "personio"))
+    fake(monkeypatch, {"workable.com/api/v1/widget/accounts/hf": {"name": "Hugging Face", "jobs": []}, "acme.teamtailor.com": "<?xml version='1.0'?><rss></rss>",
+                       "workable.com": http_error(404), "teamtailor.com": "<html>not a board</html>"})
+    assert discover.probe("workable", "hf") == (True, "Hugging Face") and discover.probe("teamtailor", "acme") == (True, None)
+    assert discover.probe("workable", "nope") == (False, None) and discover.probe("teamtailor", "nope") == (False, None)
 
 
 def test_commoncrawl_is_best_effort():
@@ -366,7 +396,8 @@ def test_all_sources_have_unique_ids_inside_the_site_range():
     ids = [s[1] for s in run.all_sources()]
     assert len(set(names)) == len(names) and len(set(ids)) == len(ids) and all(-100 < i < 0 for i in ids)
     assert {"Greenhouse", "Lever", "Ashby", "Recruitee", "Personio", "Adzuna", "The Muse", "Arbeitnow", "USAJOBS",
-            "Career pages", "LinkedIn", "RemoteOK", "Himalayas"} <= set(names)
+            "Career pages", "LinkedIn", "RemoteOK", "Himalayas", "Workable", "Teamtailor", "NoDesk", "Remote First Jobs",
+            "Real Work From Anywhere", "Eleduck 电鸭"} <= set(names)
 
 
 def test_search_terms_come_from_enabled_roles(isolated):

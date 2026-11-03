@@ -79,3 +79,42 @@ CJL = '''<rss xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:media="http://se
 def test_cryptojobslist():
     (j,) = openfeeds.cryptojobslist(lambda u: CJL)
     assert (j["company"], j["remote"], j["tags"]) == ("Acme", True, ["Web3"]) and j["date"]
+
+
+NODESK = '''<rss><channel><item><title>Senior iOS Engineer at Amadeus</title><link>https://nodesk.co/remote-jobs/amadeus-ios/</link>
+<description>Build &amp;nbsp;apps</description><pubDate>Fri, 30 Oct 2026 08:00:00 +0200</pubDate></item>
+<item><title>No company line</title><link>https://nodesk.co/remote-jobs/x/</link></item><item><title>No link</title></item></channel></rss>'''
+
+
+def test_remote_rss_boards_split_role_and_company():
+    a, b = openfeeds.nodesk(lambda u: NODESK.replace("&amp;nbsp;", "&nbsp;"))
+    assert (a["title"], a["company"], a["remote"], a["date"]) == ("Senior iOS Engineer", "Amadeus", True, "2026-10-30T06:00:00+00:00")
+    assert (b["title"], b["company"]) == ("No company line", "")
+    (r,) = openfeeds.remotefirstjobs(lambda u: NODESK.replace("Engineer at", "Engineer (remote work) at").split("<item><title>No company")[0] + "</channel></rss>")
+    assert (r["title"], r["company"]) == ("Senior iOS Engineer", "Amadeus")
+
+
+RWFA = '''<rss><channel><item><title>Junior Crypto Analyst &amp;amp; Trader at Empire Assets</title><author>Empire Assets</author>
+<link>https://www.realworkfromanywhere.com/jobs/x-701</link><pubDate>Thu, 08 Oct 2026 14:17:26 GMT</pubDate><description>&lt;p&gt;Hi&lt;/p&gt;</description></item></channel></rss>'''
+
+
+def test_real_work_from_anywhere_is_open_to_anywhere():
+    (j,) = openfeeds.realworkfromanywhere(lambda u: RWFA)
+    assert (j["title"], j["company"], j["location"], j["remote"], j["text"]) == ("Junior Crypto Analyst & Trader", "Empire Assets", "Anywhere", True, "Hi")
+
+
+ELEDUCK = {"posts": [
+    {"id": "QZfL55", "title": "【远程兼职】高级 Go 后端工程师", "summary": "我们是一个已上线运营的项目", "published_at": "2026-11-03T07:25:51.073+08:00",
+     "status": "published", "tags": [{"name": "开发", "tag_group": {"code": "skill_type"}}, {"name": "线上兼职", "tag_group": {"code": "job_type"}}]},
+    {"id": "A1", "title": "上海 iOS 开发（坐班）", "published_at": "2026-11-02T10:00:00+08:00", "status": "published",
+     "tags": [{"name": "坐班", "tag_group": {"code": "job_type"}}]},
+    {"id": "B2", "title": "已招到", "closed": True, "published_at": "2026-11-01T10:00:00+08:00"}]}
+
+
+def test_eleduck_posts_are_remote_unless_on_site_and_stay_off_the_public_site():
+    a, b = openfeeds.eleduck(lambda u: ELEDUCK)
+    assert a["url"] == "https://eleduck.com/posts/QZfL55" and a["remote"] and a["date"].startswith("2026-11-02T23:25:51")
+    assert a["tags"] == ["开发", "线上兼职"] and "已上线运营" in a["text"]
+    assert not b["remote"]
+    assert "Eleduck 电鸭" in {n for n, *_ in openfeeds.SOURCES} and "Eleduck 电鸭" not in mode.PUBLIC_SOURCES
+    assert {"NoDesk", "Remote First Jobs", "Real Work From Anywhere"} <= mode.PUBLIC_SOURCES

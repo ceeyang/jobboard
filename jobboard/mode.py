@@ -5,6 +5,8 @@ Left out of the public site on purpose:
   LinkedIn            automated access is against its terms -> personal use only
   Adzuna, USAJOBS     need personal API keys whose terms usually forbid redistribution
   The Muse, Arbeitnow terms not checked for re-publication (kept local)
+  Eleduck 电鸭         Chinese remote-work community read through an unpublished JSON API with no stated terms (kept local)
+  (not added at all: SmartRecruiters - robots.txt blocks every crawler but LinkedIn's; Landing.jobs - robots.txt blocks /api/)
   Germany (BA), Canada Job Bank  no explicit open-data licence found (kept local)
   Telegram (private)  private groups / the logged-in session never leave the machine; only channels listed in
                       config/telegram_channels.txt and read through their public web preview are published"""
@@ -16,7 +18,8 @@ from pathlib import Path
 PUBLIC_SOURCES = {
     "RemoteOK", "Remotive", "We Work Remotely", "Himalayas", "Jobicy", "Working Nomads", "HN Who's Hiring",
     "HN Jobs", "Python.org Jobs", "Jobspresso", "LaraJobs", "V2EX Jobs", "V2EX Remote", "VueJobs", "CryptoJobsList",                    # open RSS / JSON feeds
-    "Greenhouse", "Lever", "Ashby", "Recruitee", "Personio", "Career pages",     # employers' own public boards
+    "NoDesk", "Remote First Jobs", "Real Work From Anywhere",                   # remote boards, feeds allowed by robots.txt
+    "Greenhouse", "Lever", "Ashby", "Recruitee", "Personio", "Workable", "Teamtailor", "Career pages",   # employers' own public boards
     "Sweden (AF)",                                                              # JobTech open data
     "EURES (EU)",                                                               # EU Commission service
     "Telegram (public)",                                                        # listed public channels, web preview only
