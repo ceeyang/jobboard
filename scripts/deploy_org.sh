@@ -66,7 +66,7 @@ publish_dir() {   # <dir> <repo> <description> <pages: workflow|branch|none> [ho
     git init -q -b main
     git config user.name "$LOGIN"; git config user.email "${UID_NUM}+${LOGIN}@users.noreply.github.com"
     git add -A
-    git commit -q -m "Deploy $repo" -m "Co-Authored-By: Claude Sonnet 5.5 <noreply@anthropic.com>"
+    git commit -q -m "Deploy $repo" -m "Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>"
     git push -q --force "https://github.com/$ORG/$repo.git" main:main
   )
   [ -z "$home" ] || gh repo edit "$ORG/$repo" --homepage "$home" >/dev/null 2>&1 || true   # the link in the repository's About box
