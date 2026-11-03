@@ -238,6 +238,16 @@ def test_discover_run_validates_candidates_before_storing(isolated, tmp_path):
     assert again["probed"] == 1 and again["added"] == 0         # known boards are not probed again; the ghost is retried
 
 
+
+def test_seed_new_only_seeds_platforms_without_companies(isolated):
+    add(isolated, "greenhouse", "acme")
+    got = discover.seed_new(isolated)
+    assert not {a for a, _ in got} & {"greenhouse"} and ("teamtailor", "polestar") in got and ("workable", "huggingface") in got
+    out = discover.run(isolated, channels=("seed_new",), probe_fn=lambda a, s: (a == "teamtailor", None), pace=0)
+    assert out["registry"]["teamtailor"] == len(discover.SEED["teamtailor"])
+    left = {a for a, _ in discover.seed_new(isolated)}
+    assert "teamtailor" not in left and "workable" in left        # seeded once; a platform whose seeds all failed is tried again
+
 def test_probe_per_ats(monkeypatch):
     fake(monkeypatch, {"greenhouse.io/v1/boards/yes": {"name": "Yes Inc"}, "greenhouse.io/v1/boards/no": http_error(404),
                        "api.lever.co": [], "ashbyhq.com": {"jobs": []}, "recruitee.com": {"offers": []},

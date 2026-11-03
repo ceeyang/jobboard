@@ -72,6 +72,13 @@ def seed() -> set[tuple[str, str]]:
     return {(a, s) for a, slugs in SEED.items() for s in slugs}
 
 
+def seed_new(con) -> set[tuple[str, str]]:
+    """The seed list of every ATS that has no company in the registry yet: a newly supported platform starts working on the next
+    fetch, also on a long-running registry (the public site's), instead of waiting for links to it to show up in stored jobs."""
+    have = {r["ats"] for r in con.execute("SELECT DISTINCT ats FROM companies")}
+    return {(a, s) for a, slugs in SEED.items() if a not in have for s in slugs}
+
+
 def commoncrawl(get_text=None, sleep=time.sleep, limit: int = 5000) -> set[tuple[str, str]]:
     get_text = get_text or (lambda u: http.get_text(u, timeout=90))
     try:
@@ -130,7 +137,7 @@ def run(con=None, channels=("db", "seed", "commoncrawl"), file: str | None = Non
     cands: set[tuple[str, str]] = set()
     per_channel = {}
     for ch in channels:
-        got = {"db": lambda: from_db(con), "seed": seed, "commoncrawl": commoncrawl,
+        got = {"db": lambda: from_db(con), "seed": seed, "seed_new": lambda: seed_new(con), "commoncrawl": commoncrawl,
                "file": lambda: from_file(file) if file else set()}[ch]()
         per_channel[ch] = len(got)
         cands |= got

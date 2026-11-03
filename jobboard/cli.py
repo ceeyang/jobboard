@@ -118,11 +118,10 @@ def main(argv=None):
                     out["telegram"] = {"error": f"{type(exc).__name__}: {exc}"[:160]}
             if not a.no_web:
                 from jobboard.sources import run as web
-                if not a.only:      # keep the company registry growing: links found in stored jobs, seed list when empty
+                if not a.only:      # keep the company registry growing: links found in stored jobs, seeds of platforms with no company yet
                     con = db.connect()
                     try:
-                        empty = not con.execute("SELECT 1 FROM companies LIMIT 1").fetchone()
-                        out["discover"] = discover_run(con, ("db", "seed") if empty else ("db",))
+                        out["discover"] = discover_run(con, ("db", "seed_new"))
                     except Exception as exc:  # discovery is a bonus, never a reason to skip the fetch
                         con.rollback()
                         out["discover"] = {"error": f"{type(exc).__name__}: {exc}"[:160]}
