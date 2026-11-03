@@ -1,7 +1,10 @@
 """More open job feeds that need no account: Hacker News job posts (YC companies), the Python Software Foundation job
 board, Jobspresso and LaraJobs (verified 2026-10-28), plus V2EX (Chinese developer community: jobs + remote nodes), VueJobs
-and CryptoJobsList (verified 2026-11-02; all answered with postings from the last days).
+and CryptoJobsList (verified 2026-11-02; all answered with postings from the last days), plus NoDesk, Remote First Jobs and
+Real Work From Anywhere (remote-only boards; robots.txt allows their feeds, NoDesk signals use=reference) and the 电鸭 Eleduck
+community board (Chinese remote work; its JSON API has no published terms, so it stays out of the public site) (verified 2026-11-03).
 python.org publishes no date in its feed: the first time we see a posting counts as its date (the database keeps the earliest)."""
+import html
 import re
 import xml.etree.ElementTree as ET
 
@@ -132,7 +135,62 @@ def cryptojobslist(get_text=None):
     return out
 
 
-# name, fake id (-50..-59: unused ranges), min seconds between runs, adapter
+def _role_at(title: str) -> tuple[str, str]:
+    """'Senior Engineer at Acme' -> ('Senior Engineer', 'Acme'); titles without ' at ' keep the whole line and no company."""
+    role, sep, company = (title or "").strip().rpartition(" at ")
+    return (role.strip(), company.strip()) if sep and role.strip() and company.strip() else ((title or "").strip(), "")
+
+
+def _remote_rss(url: str, get_text=None, author: bool = False):
+    """Remote-only boards whose RSS items are 'Role at Company'; the link is the board's own job page."""
+    root = _tolerant_xml((get_text or http.get_text)(url))
+    out = []
+    for it in root.iterfind("channel/item"):
+        link = (it.findtext("link") or "").strip()
+        if not link:
+            continue
+        role, company = _role_at(html.unescape(it.findtext("title") or ""))     # some feeds escape '&' twice ('&amp;amp;')
+        role = re.sub(r"\s*\(remote work\)\s*$", "", role, flags=re.I)
+        out.append({"id": link, "url": link, "title": role[:140], "company": (author and (it.findtext("author") or "").strip()) or company,
+                    "location": "", "tags": [], "salary": None, "text": plain(it.findtext("description")),
+                    "date": _iso(it.findtext("pubDate")), "remote": True})
+    return out
+
+
+def nodesk(get_text=None):
+    return _remote_rss("https://nodesk.co/remote-jobs/index.xml", get_text)
+
+
+def remotefirstjobs(get_text=None):
+    return _remote_rss("https://remotefirstjobs.com/rss/jobs.rss", get_text)
+
+
+def realworkfromanywhere(get_text=None):
+    """Remote jobs open to applicants anywhere ('work from anywhere'); the RSS author field is the company."""
+    items = _remote_rss("https://www.realworkfromanywhere.com/rss.xml", get_text, author=True)
+    for j in items:
+        j["location"] = "Anywhere"
+    return items
+
+
+def eleduck(get_json=None):
+    """电鸭社区: Chinese remote / freelance work. Category 5 holds the job posts; a post is free text with tags such as 远程 / 线上兼职."""
+    posts = (get_json or http.get_json)("https://svc.eleduck.com/api/v1/posts?category=5&page=1").get("posts", [])
+    out = []
+    for p in posts:
+        title = (p.get("full_title") or p.get("title") or "").strip()
+        if not title or p.get("closed") or p.get("deleted") or p.get("status", "published") != "published":
+            continue
+        tags = [t.get("name", "") for t in p.get("tags") or [] if t.get("name")]
+        work = " ".join(t.get("name", "") for t in p.get("tags") or [] if (t.get("tag_group") or {}).get("code") == "job_type")
+        out.append({"id": f"ed{p['id']}", "url": f"https://eleduck.com/posts/{p['id']}", "title": title[:140], "company": "",
+                    "location": "", "tags": tags, "salary": None, "text": title + "\n" + (p.get("summary") or ""),
+                    "date": _iso(p.get("published_at")),
+                    "remote": not re.search(r"坐班|驻场|onsite", work + " " + title, re.I)})   # a remote-work community: remote unless it says on-site
+    return out
+
+
+# name, fake id (-50..-69: unused ranges), min seconds between runs, adapter
 SOURCES = [
     ("HN Jobs",          -50, 3 * 3600, hn_jobs),
     ("Python.org Jobs",  -51, 6 * 3600, python_org),
@@ -142,4 +200,8 @@ SOURCES = [
     ("V2EX Remote",      -55, 3 * 3600, lambda: v2ex("remote")),
     ("VueJobs",          -56, 6 * 3600, vuejobs),
     ("CryptoJobsList",   -57, 6 * 3600, cryptojobslist),
+    ("NoDesk",           -58, 6 * 3600, nodesk),
+    ("Remote First Jobs", -59, 3 * 3600, remotefirstjobs),
+    ("Real Work From Anywhere", -60, 6 * 3600, realworkfromanywhere),
+    ("Eleduck 电鸭",      -61, 3 * 3600, eleduck),
 ]

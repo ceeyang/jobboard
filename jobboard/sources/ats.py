@@ -1,4 +1,4 @@
-"""Per-company ATS boards: Greenhouse, Lever, Ashby, Recruitee, Personio.
+"""Per-company ATS boards: Greenhouse, Lever, Ashby, Recruitee, Personio, Workable, Teamtailor.
 The company list lives in the `companies` table (filled by `jobboard discover`). Each adapter walks its active
 companies with a few threads and one global request pace, and keeps only postings whose TITLE matches an enabled role
 (the full list of a big employer is megabytes; we do not store or even download what you would never look at).
@@ -159,8 +159,49 @@ def _personio_board(row, pacer):
     return out
 
 
+# ---- Workable ---------------------------------------------------------------------------------------
+def _workable_board(row, pacer):
+    """The public widget API (what employers embed on their own sites): titles, places and dates, no description."""
+    d = http.get_json(f"https://apply.workable.com/api/v1/widget/accounts/{row['slug']}")
+    out = []
+    for j in d.get("jobs", []):
+        if not wanted(j.get("title")):
+            continue
+        places = j.get("locations") or [{"city": j.get("city"), "region": j.get("state"), "country": j.get("country")}]
+        loc = "; ".join(", ".join(x for x in (p.get("city"), p.get("region"), p.get("country")) if x) for p in places if not p.get("hidden"))
+        out.append({"id": f"wk{j['shortcode']}", "url": j.get("url") or f"https://apply.workable.com/j/{j['shortcode']}",
+                    "title": j["title"].strip(), "company": d.get("name") or _name(row), "location": loc,
+                    "tags": [t for t in (j.get("department"), j.get("employment_type")) if t], "salary": None,
+                    "text": " · ".join(x for x in (j["title"], j.get("department"), j.get("function"), j.get("employment_type"), loc) if x),
+                    "date": _iso(j.get("published_on") or j.get("created_at") or _now()),
+                    "remote": bool(j.get("telecommuting")) or _remote(loc, j["title"])})
+    return out
+
+
+# ---- Teamtailor -------------------------------------------------------------------------------------
+TT = "{https://teamtailor.com/locations}"
+
+
+def _teamtailor_board(row, pacer):
+    root = ET.fromstring(http.get_text(f"https://{row['slug']}.teamtailor.com/jobs.rss").encode("utf-8"))
+    company = (root.findtext("channel/title") or "").strip() or _name(row)
+    out = []
+    for it in root.iterfind("channel/item"):
+        title, link = (it.findtext("title") or "").strip(), (it.findtext("link") or "").strip()
+        if not link or not wanted(title):
+            continue
+        places = [", ".join(x for x in (l.findtext(TT + "city"), l.findtext(TT + "country")) if x) for l in it.iter(TT + "location")]
+        loc = "; ".join(dict.fromkeys(x for x in places if x))
+        status = (it.findtext("remoteStatus") or "").strip().lower()       # none / hybrid / temporary / fully
+        out.append({"id": f"tt{it.findtext('guid') or link}", "url": link, "title": title, "company": company, "location": loc,
+                    "tags": [t for t in (it.findtext(TT + "department"),) if t], "salary": None,
+                    "text": plain(it.findtext("description")), "date": _iso(it.findtext("pubDate") or _now()),
+                    "remote": status == "fully" or _remote(loc, title)})
+    return out
+
+
 BOARDS = {"greenhouse": _gh_board, "lever": _lever_board, "ashby": _ashby_board,
-          "recruitee": _recruitee_board, "personio": _personio_board}
+          "recruitee": _recruitee_board, "personio": _personio_board, "workable": _workable_board, "teamtailor": _teamtailor_board}
 
 
 def _adapter(ats: str):
@@ -174,4 +215,6 @@ SOURCES = [
     ("Ashby",      -12, 3 * 3600, _adapter("ashby")),
     ("Recruitee",  -13, 3 * 3600, _adapter("recruitee")),
     ("Personio",   -14, 3 * 3600, _adapter("personio")),
+    ("Workable",   -25, 3 * 3600, _adapter("workable")),
+    ("Teamtailor", -26, 3 * 3600, _adapter("teamtailor")),
 ]

@@ -20,10 +20,13 @@ _URLS = [
     ("ashby", re.compile(r"jobs\.ashbyhq\.com/([a-z0-9][a-z0-9%._-]{1,60})", re.I)),
     ("recruitee", re.compile(r"([a-z0-9][a-z0-9-]{1,60})\.recruitee\.com", re.I)),
     ("personio", re.compile(r"([a-z0-9][a-z0-9-]{1,60})\.jobs\.personio\.(?:de|com)", re.I)),
+    ("workable", re.compile(r"apply\.workable\.com/([a-z0-9][a-z0-9_-]{1,60})", re.I)),
+    ("teamtailor", re.compile(r"([a-z0-9][a-z0-9-]{1,60})\.teamtailor\.com", re.I)),
 ]
 _SLUG = re.compile(r"[a-z0-9][a-z0-9._-]{0,60}")      # what can be part of a board URL; spaces etc. are text noise
-_NOT_SLUGS = {"embed", "v1", "api", "www", "jobs", "careers", "boards", "static", "assets", "images", "img", "cdn", "app"}
-_PAIR = re.compile(r"^\s*(greenhouse|lever|ashby|recruitee|personio)\s*[:=,]\s*([\w.-]+)\s*$", re.I | re.M)
+_NOT_SLUGS = {"embed", "v1", "api", "www", "jobs", "careers", "boards", "static", "assets", "images", "img", "cdn", "app",
+              "j", "na", "eu", "help", "support", "status"}      # apply.workable.com/j/<code> is one posting; na./help. are Teamtailor's own hosts
+_PAIR = re.compile(r"^\s*(greenhouse|lever|ashby|recruitee|personio|workable|teamtailor)\s*[:=,]\s*([\w.-]+)\s*$", re.I | re.M)
 SEED = {
     "greenhouse": ["stripe", "airbnb", "dropbox", "coinbase", "discord", "reddit", "pinterest", "robinhood", "instacart",
                    "twilio", "cloudflare", "datadog", "gitlab", "okta", "squarespace", "grammarly", "duolingo", "asana"],
@@ -31,9 +34,11 @@ SEED = {
     "ashby": ["ramp", "notion", "linear", "openai", "retool", "vercel", "deel", "supabase", "cursor", "replit"],
     "recruitee": ["bunq", "tbo", "tiktok"],
     "personio": ["personio", "celonis"],
+    "workable": ["huggingface", "seeq", "inventyou-ab"],
+    "teamtailor": ["career", "polestar", "tibber", "lunar", "instabee", "storytel", "tradera"],
 }
 CC_HOSTS = {"greenhouse": ["boards.greenhouse.io", "job-boards.greenhouse.io"], "lever": ["jobs.lever.co"],
-            "ashby": ["jobs.ashbyhq.com"]}
+            "ashby": ["jobs.ashbyhq.com"], "workable": ["apply.workable.com"]}
 
 
 def extract(text: str) -> set[tuple[str, str]]:
@@ -104,6 +109,11 @@ def probe(ats: str, slug: str, get_json=None, get_text=None) -> tuple[bool, str 
             return "jobs" in gj(f"https://api.ashbyhq.com/posting-api/job-board/{slug}"), None
         if ats == "recruitee":
             return "offers" in gj(f"https://{slug}.recruitee.com/api/offers/"), None
+        if ats == "workable":
+            d = gj(f"https://apply.workable.com/api/v1/widget/accounts/{slug}")
+            return "jobs" in d, d.get("name")
+        if ats == "teamtailor":
+            return "<rss" in gt(f"https://{slug}.teamtailor.com/jobs.rss")[:400], None
         if ats == "personio":
             return "<workzag-jobs" in gt(f"https://{slug}.jobs.personio.de/xml?language=en")[:600], None
         if ats == "web":

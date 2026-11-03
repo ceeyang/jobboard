@@ -51,11 +51,13 @@ uv run jobboard fetch --only Greenhouse,LinkedIn --force
 ```
 | Source | How | Needs |
 |---|---|---|
-| Greenhouse, Lever, Ashby, Recruitee, Personio | each employer's public board API, only titles that match your roles are kept | companies in the `companies` table (`discover` fills it; a board is stored only after it answered) |
+| Greenhouse, Lever, Ashby, Recruitee, Personio, Workable, Teamtailor | each employer's public board API, only titles that match your roles are kept | companies in the `companies` table (`discover` fills it; a board is stored only after it answered) |
 | Career pages | schema.org `JobPosting` JSON-LD (single job pages, or a listing page whose job links are followed) | page URLs added with `discover --file` |
 | Adzuna | search API, queries = your roles' English keywords | `ADZUNA_APP_ID`, `ADZUNA_APP_KEY` (free) |
 | USAJOBS | federal jobs | `USAJOBS_KEY`, `USAJOBS_EMAIL` (free) |
 | The Muse, Arbeitnow | public APIs | nothing |
+| NoDesk, Remote First Jobs, Real Work From Anywhere | remote-only boards' RSS feeds (public site too) | nothing |
+| Eleduck 电鸭 | Chinese remote / freelance community, its JSON API (local board only: no published terms) | nothing |
 | LinkedIn | logged-out `jobs-guest` pages, **no account, no cookies** | nothing; locations = setting `linkedin_locations` (default `["Remote"]`, edit via `PUT /api/settings`) |
 
 - A source without its key shows as `skipped` in `fetch` output; it never counts as an error.
