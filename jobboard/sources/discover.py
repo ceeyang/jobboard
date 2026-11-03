@@ -35,7 +35,8 @@ SEED = {
     "recruitee": ["bunq", "tbo", "tiktok"],
     "personio": ["personio", "celonis"],
     "workable": ["huggingface", "seeq", "inventyou-ab"],
-    "teamtailor": ["career", "polestar", "tibber", "lunar", "instabee", "storytel", "tradera"],
+    "teamtailor": ["schibsted", "anyfin", "qliro", "bokio", "vipps", "hedvig", "detectify", "funnel", "quinyx", "fishbrain",
+                   "templafy", "payfit", "lunar", "tibber", "polestar", "instabee"],      # tech employers with live boards (2026-11-03)
 }
 CC_HOSTS = {"greenhouse": ["boards.greenhouse.io", "job-boards.greenhouse.io"], "lever": ["jobs.lever.co"],
             "ashby": ["jobs.ashbyhq.com"], "workable": ["apply.workable.com"]}
@@ -73,10 +74,11 @@ def seed() -> set[tuple[str, str]]:
 
 
 def seed_new(con) -> set[tuple[str, str]]:
-    """The seed list of every ATS that has no company in the registry yet: a newly supported platform starts working on the next
-    fetch, also on a long-running registry (the public site's), instead of waiting for links to it to show up in stored jobs."""
-    have = {r["ats"] for r in con.execute("SELECT DISTINCT ats FROM companies")}
-    return {(a, s) for a, slugs in SEED.items() if a not in have for s in slugs}
+    """Seeds that are not in the registry yet (active or not): seeds added to SEED, e.g. for a newly supported platform, start
+    working on the next fetch, also on a long-running registry (the public site's). Known boards are never probed again, so
+    only the few seeds that failed their probe are retried."""
+    have = {(r["ats"], r["slug"]) for r in con.execute("SELECT ats, slug FROM companies")}
+    return seed() - have
 
 
 def commoncrawl(get_text=None, sleep=time.sleep, limit: int = 5000) -> set[tuple[str, str]]:

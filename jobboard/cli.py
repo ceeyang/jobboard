@@ -118,7 +118,7 @@ def main(argv=None):
                     out["telegram"] = {"error": f"{type(exc).__name__}: {exc}"[:160]}
             if not a.no_web:
                 from jobboard.sources import run as web
-                if not a.only:      # keep the company registry growing: links found in stored jobs, seeds of platforms with no company yet
+                if not a.only:      # keep the company registry growing: links found in stored jobs, seeds not in the registry yet
                     con = db.connect()
                     try:
                         out["discover"] = discover_run(con, ("db", "seed_new"))
